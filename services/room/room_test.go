@@ -36,7 +36,7 @@ func TestRoomServiceHandler(t *testing.T) {
 type mockRoomStore struct {
 }
 
-func (m *mockRoomStore) GetRoomsByID(id int) ([]types.Room, error) {
+func (m *mockRoomStore) GetRoomsByUserID(id int) ([]types.RoomInfoPayload, error) {
 	return nil, nil
 }
 func (m *mockRoomStore) CreateRoom(room types.Room) error {

@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS devices (
     `feedId` INT UNSIGNED NOT NULL,
     `feedKey` VARCHAR(255) NOT NULL,
     `title` VARCHAR(255) NOT NULL,
+    `type` ENUM('fan', 'light', 'door', 'sensor') NOT NULL DEFAULT 'fan',
     `userId` INT UNSIGNED NOT NULL,
     `roomId` INT UNSIGNED NOT NULL,
     

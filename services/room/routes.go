@@ -29,6 +29,27 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/rooms", auth.WithJWTAuth(h.createRoom, h.userStore)).Methods(http.MethodPost)
 }
 
+func (h *Handler) getAllRoom(w http.ResponseWriter, r *http.Request) {
+	// params := mux.Vars(r)
+	// id, _ := strconv.Atoi(params["userID"])
+	id := auth.GetUserIDFromContext(r.Context())
+
+	_, err := h.userStore.GetUserByID(id)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("requested user doesn't exists"))
+		return
+	}
+
+	rooms, err := h.store.GetRoomsByUserID(id)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, rooms)
+}
+
+
 func (h *Handler) createRoom(w http.ResponseWriter, r *http.Request) {
 	userID := auth.GetUserIDFromContext(r.Context())
 	log.Println("room added by", userID)
@@ -54,24 +75,4 @@ func (h *Handler) createRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.WriteJSON(w, http.StatusCreated, nil)
-}
-
-func (h *Handler) getAllRoom(w http.ResponseWriter, r *http.Request) {
-	// params := mux.Vars(r)
-	// id, _ := strconv.Atoi(params["userID"])
-	id := auth.GetUserIDFromContext(r.Context())
-
-	_, err := h.userStore.GetUserByID(id)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("requested user doesn't exists"))
-		return
-	}
-
-	rooms, err := h.store.GetRoomsByID(id)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return
-	}
-
-	utils.WriteJSON(w, http.StatusOK, rooms)
 }

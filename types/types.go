@@ -10,13 +10,19 @@ type UserStore interface {
 
 type RoomStore interface {
 	CreateRoom(Room) error
-	GetRoomsByID(id int) ([]Room, error)
+	GetRoomsByUserID(userId int) ([]RoomInfoPayload, error)
 }
 
 type DeviceStore interface {
 	CreateDevice(Device) error
-	GetDevicesByID(id int) ([]Device, error)
-	GetDevicesInRoomID(id int) ([]Device, error)
+	GetDevicesByUserID(userId int) ([]DeviceDataPayload, error)
+	GetDevicesByFeedID(feedId int) (*DeviceDataPayload, error)
+	GetDevicesInRoomID(id int) ([]DeviceDataPayload, error)
+}
+
+type LogStore interface {
+	CreateLog(Log) error
+	GetLogsByID(id int) ([]Log, error)
 }
 
 type ProductStore interface {
@@ -31,6 +37,16 @@ type OrderStore interface {
 	CreateOrderItem(OrderItem) error
 }
 
+type Log struct {
+	ID        int       `json:"id"`
+	Type      string    `json:"type"`
+	Message   string    `json:"message"`
+	DeviceID  int       `json:"deviceID"`
+	UserID    int       `json:"userID"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
 type Room struct {
 	ID     int    `json:"id"`
 	Title  string `json:"title"`
@@ -39,8 +55,9 @@ type Room struct {
 
 type Device struct {
 	FeedId  int    `json:"feedId"`
-	Title   string `json:"title"`
 	FeedKey string `json:"feedKey"`
+	Title   string `json:"title"`
+	Type    string `json:"type"`
 	UserID  int    `json:"userID"`
 	RoomID  int    `json:"roomID"`
 }
@@ -118,12 +135,15 @@ type CreateDevicePayload struct {
 	FeedID  int    `json:"feedId" validate:"required"`
 	FeedKey string `json:"feedkey" validate:"required"`
 	Title   string `json:"title" validate:"required"`
+	Type    string `json:"type" validate:"required"`
 	RoomID  int    `json:"roomID" validate:"required"`
 }
 
 type DeviceDataPayload struct {
-	ID        string    `json:"id"`
+	FeedID    string    `json:"feedId"`
 	Value     string    `json:"value" validate:"required"`
+	Type      string    `json:"type"`
+	Title     string    `json:"title"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -132,4 +152,19 @@ type LogCreatePayload struct {
 	Message  string `json:"message"`
 	DeviceID int    `json:"deviceId"`
 	UserID   int    `json:"userId"`
+	Value    string `json:"value"`
+}
+
+type RoomInfoPayload struct {
+	ID    int    `json:"id"`
+	Title string `json:"title"`
+
+	FanCount    int  `json:"fanCount"`
+	LightCount  int  `json:"lightCount"`
+	DoorCount   int  `json:"doorCount"`
+	SensorCount int `json:"sensorCount"`
+	FanStatus   int `json:"fanStatus"`
+	LightStatus int `json:"lightStatus"`
+	DoorStatus  int `json:"doorStatus"`
+	SensorStatus int `json:"sensorStatus"`
 }

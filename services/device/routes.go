@@ -22,13 +22,15 @@ type Handler struct {
 	store     types.DeviceStore
 	userStore types.UserStore
 	roomStore types.RoomStore
+	logStore  types.LogStore
 }
 
-func NewHandler(store types.DeviceStore, userStore types.UserStore, roomStore types.RoomStore) *Handler {
+func NewHandler(store types.DeviceStore, userStore types.UserStore, roomStore types.RoomStore, logStore types.LogStore) *Handler {
 	return &Handler{
 		store:     store,
 		userStore: userStore,
 		roomStore: roomStore,
+		logStore:  logStore,
 	}
 }
 
@@ -36,17 +38,19 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	// get
 	router.HandleFunc("/devices", auth.WithJWTAuth(h.getAllDeviceBelongToID, h.userStore)).Methods(http.MethodGet)
 	router.HandleFunc("/devices/{feed_key}/data", h.getDeviceData).Methods(http.MethodGet)
-	router.HandleFunc("/devices/{feed_key}", h.getCurrentStatus).Methods(http.MethodGet)
+	router.HandleFunc("/devices/{feed_id}", h.getDeviceInfo).Methods(http.MethodGet)
 	router.HandleFunc("/devices/room/{roomID}", h.getAllDeviceInRoom).Methods(http.MethodGet)
 	// post
 	router.HandleFunc("/devices", auth.WithJWTAuth(h.createDevice, h.userStore)).Methods(http.MethodPost)
-	router.HandleFunc("/devices/{feed_key}", h.addDeviceData).Methods(http.MethodPost)
+	router.HandleFunc("/devices/{feed_key}", auth.WithJWTAuth(h.addDeviceData, h.userStore)).Methods(http.MethodPost)
 }
 
 func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	url := os.Getenv("AIOAPI") + params["feed_key"] + "/data"
 	log.Println("adding data to", url)
+
+	// userId := auth.GetUserIDFromContext(r.Context())
 
 	var payload types.DeviceDataPayload
 	if err := utils.ParseJSON(r, &payload); err != nil {
@@ -108,6 +112,19 @@ func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// err = h.logStore.CreateLog(types.Log{
+	// 	Type:      "onoff",
+	// 	Message:   fmt.Sprintf("%s got value %s", params["feed_key"], jsonResponse.Value),
+	// 	DeviceID:  jsonResponse.FeedId,
+	// 	UserID:    userId,
+	// 	Value:     jsonResponse.Value,
+	// 	CreatedAt: jsonResponse.CreatedAt,
+	// })
+	// if err != nil {
+	// 	utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log creation:%v", err))
+	// 	return
+	// }
+
 	utils.WriteJSON(w, http.StatusOK, jsonResponse)
 }
 
@@ -136,47 +153,45 @@ func (h *Handler) getDeviceData(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, jsonResponse)
 }
 
-func (h *Handler) getCurrentStatus(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getDeviceInfo(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	url := os.Getenv("AIOAPI") + params["feed_key"] + "/data?limit=1"
-	log.Println("calling", url)
+	feedId, _ := strconv.Atoi(params["feed_id"])
 
-	res,err := http.Get(url)
+	deviceData, err := h.store.GetDevicesByFeedID(feedId)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("get device info:%s", err))
+		return 
 	}
 
-	responseData, err := io.ReadAll(res.Body)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
+	
 
-	var jsonResponse [] types.DeviceDataPayload
-	if err := json.Unmarshal(responseData, &jsonResponse); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return
-	}
+	// var jsonResponse []types.DeviceDataPayload
+	// if err := json.Unmarshal(responseData, &jsonResponse); err != nil {
+	// 	utils.WriteError(w, http.StatusInternalServerError, err)
+	// 	return
+	// }
 
-	utils.WriteJSON(w, http.StatusOK, jsonResponse)
+	// utils.WriteJSON(w, http.StatusOK, jsonResponse)
+	utils.WriteJSON(w, http.StatusOK, deviceData)
 }
 
 func (h *Handler) getAllDeviceBelongToID(w http.ResponseWriter, r *http.Request) {
-	id := auth.GetUserIDFromContext(r.Context())
+	userId := auth.GetUserIDFromContext(r.Context())
 
-	_, err := h.userStore.GetUserByID(id)
+	_, err := h.userStore.GetUserByID(userId)
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user %v doesn't exist", id))
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user %v doesn't exist", userId))
 		return
 	}
 	// improve: check if room does exist
 
-	devices, err := h.store.GetDevicesByID(id)
+	devices, err := h.store.GetDevicesByUserID(userId)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
+
+	fmt.Println(userId, devices)
 
 	utils.WriteJSON(w, http.StatusOK, devices)
 }
@@ -185,11 +200,6 @@ func (h *Handler) getAllDeviceInRoom(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id, _ := strconv.Atoi(params["roomID"])
 
-	_, err := h.userStore.GetUserByID(id)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("no device found in room %v", id))
-		return
-	}
 	// improve: check if room does exist
 
 	devices, err := h.store.GetDevicesInRoomID(id)
@@ -198,7 +208,27 @@ func (h *Handler) getAllDeviceInRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, devices)
+	response := map[string][]types.DeviceDataPayload{
+		"fanList":    {},
+		"lightList":  {},
+		"doorList":   {},
+		"sensorList": {},
+	}
+
+	for _, d := range devices {
+		switch d.Type {
+		case "fan":
+			response["fanList"] = append(response["fanList"], d)
+		case "light":
+			response["lightList"] = append(response["lightList"], d)
+		case "door":
+			response["doorList"] = append(response["doorList"], d)
+		case "sensor":
+			response["sensorList"] = append(response["sensorList"], d)
+		}
+	}
+
+	utils.WriteJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
@@ -219,12 +249,31 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 		Title:   payload.Title,
 		FeedKey: payload.FeedKey,
 		FeedId:  payload.FeedID,
+		Type:    payload.Type,
 		UserID:  userId,
 		RoomID:  payload.RoomID,
 	})
 
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	value := "0" // Default value
+	if payload.Type == "light" {
+		value = "#000000"
+	}
+
+	err = h.logStore.CreateLog(types.Log{
+		Type:     "creation",
+		Message:  fmt.Sprintf("%s got added to the system", payload.Title),
+		DeviceID: payload.FeedID,
+		UserID:   userId,
+		Value:    value,
+	})
+
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log creation error:%v", err))
 		return
 	}
 

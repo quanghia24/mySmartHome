@@ -9,14 +9,15 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/joho/godotenv"
 	"github.com/quanghia24/mySmartHome/db"
 )
 
 func main() {
-	// err := godotenv.Load()
-	// if err != nil {
-	// 	log.Fatal("error loading .env file in database")
-	// }
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("error loading .env file in database")
+	}
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true",
 		os.Getenv("DB_USER"),

@@ -8,10 +8,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/quanghia24/mySmartHome/services/cart"
 	"github.com/quanghia24/mySmartHome/services/device"
+	"github.com/quanghia24/mySmartHome/services/log_device"
 	"github.com/quanghia24/mySmartHome/services/order"
 	"github.com/quanghia24/mySmartHome/services/product"
 	"github.com/quanghia24/mySmartHome/services/room"
 	"github.com/quanghia24/mySmartHome/services/user"
+	"github.com/rs/cors"
 )
 
 type APIServer struct {
@@ -50,12 +52,20 @@ func (s *APIServer) Run() error {
 	roomHandler := room.NewHandler(roomStore, userStore)
 	roomHandler.RegisterRoutes(subrouter)
 
+	logStore := log_device.NewStore(s.db)
+	logHandler := log_device.NewHandler(logStore, userStore)
+	logHandler.RegisterRoutes(subrouter)
+
 	deviceStore := device.NewStore(s.db)
-	deviceHandler := device.NewHandler(deviceStore, userStore, roomStore)
+	deviceHandler := device.NewHandler(deviceStore, userStore, roomStore, logStore)
 	deviceHandler.RegisterRoutes(subrouter)
 
 	fmt.Println("Listening on port", s.addr)
 
-	return http.ListenAndServe(s.addr, router)
-
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut},
+		AllowCredentials: true,
+	})
+	return http.ListenAndServe(s.addr, c.Handler(router))
 }

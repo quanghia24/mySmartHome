@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS `logs` (
     `id` INT UNSIGNED AUTO_INCREMENT NOT NULL,
-    `type` ENUM('onoff', 'schedule', 'warning') NOT NULL DEFAULT 'onoff',
+    `type` ENUM('creation', 'onoff', 'schedule', 'warning') NOT NULL,
     `message` TEXT,
     `deviceId` INT UNSIGNED NOT NULL,
     `userId` INT UNSIGNED NOT NULL,
@@ -10,4 +10,4 @@ CREATE TABLE IF NOT EXISTS `logs` (
     PRIMARY KEY (`id`),
     FOREIGN KEY (`deviceId`) REFERENCES devices(`feedId`),
     FOREIGN KEY (`userId`) REFERENCES users(`id`)
-)
+);
