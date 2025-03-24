@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/quanghia24/mySmartHome/services/cart"
 	"github.com/quanghia24/mySmartHome/services/device"
@@ -13,7 +14,6 @@ import (
 	"github.com/quanghia24/mySmartHome/services/product"
 	"github.com/quanghia24/mySmartHome/services/room"
 	"github.com/quanghia24/mySmartHome/services/user"
-	"github.com/rs/cors"
 )
 
 type APIServer struct {
@@ -32,6 +32,13 @@ func NewAPIServer(addr string, db *sql.DB) *APIServer {
 // register routes and their dependency -> make them services
 func (s *APIServer) Run() error {
 	router := mux.NewRouter()
+
+	router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Security-Policy", "default-src 'self' http://localhost:8000; script-src 'self' 'unsafe-inline' 'unsafe-eval'")
+			next.ServeHTTP(w, r)
+		})
+	})
 
 	subrouter := router.PathPrefix("/api/v1").Subrouter()
 
@@ -62,10 +69,10 @@ func (s *APIServer) Run() error {
 
 	fmt.Println("Listening on port", s.addr)
 
-	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPut},
-		AllowCredentials: true,
-	})
-	return http.ListenAndServe(s.addr, c.Handler(router))
+	return http.ListenAndServe(s.addr,
+		handlers.CORS(
+			handlers.AllowedOrigins([]string{"*"}),
+			handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
+			handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}),
+		)(router))
 }
