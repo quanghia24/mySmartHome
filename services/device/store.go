@@ -33,7 +33,7 @@ func (s *Store) GetDevicesByUserID(userId int) ([]types.DeviceDataPayload, error
 				FROM logs l2
 				WHERE l2.deviceId = d.feedId
 			)
-		WHERE d.userId = ?;
+		WHERE d.userID = ?;
 	`
 
 	rows, err := s.db.Query(query, userId)
@@ -83,7 +83,7 @@ func (s *Store) GetDevicesByFeedID(feedId int) (*types.DeviceDataPayload, error)
 	return &deviceData, nil
 }
 
-func (s *Store) GetDevicesInRoomID(id int) ([]types.DeviceDataPayload, error) {
+func (s *Store) GetDevicesInRoomID(roomId int) ([]types.DeviceDataPayload, error) {
 	query := `
 		SELECT d.feedId, d.feedKey, l.value, d.type, d.title, l.createdAt
 		FROM devices d
@@ -94,9 +94,9 @@ func (s *Store) GetDevicesInRoomID(id int) ([]types.DeviceDataPayload, error) {
 				FROM logs l2
 				WHERE l2.deviceId = d.feedId
 			)
-		WHERE d.userId = ?;
+		WHERE d.roomId = ?;
 	`
-	rows, err := s.db.Query(query, id)
+	rows, err := s.db.Query(query, roomId)
 	if err != nil {
 		return nil, err
 	}

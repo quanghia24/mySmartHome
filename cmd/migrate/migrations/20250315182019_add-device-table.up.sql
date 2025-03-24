@@ -7,6 +7,6 @@ CREATE TABLE IF NOT EXISTS devices (
     `roomId` INT UNSIGNED NOT NULL,
     
     PRIMARY KEY(`feedId`),
-    FOREIGN KEY(`userId`) REFERENCES users(`id`),
-    FOREIGN KEY(`roomId`) REFERENCES rooms(`id`)
+    FOREIGN KEY(`userId`) REFERENCES users(`id`) ON DELETE CASCADE,
+    FOREIGN KEY(`roomId`) REFERENCES rooms(`id`) ON DELETE CASCADE
 )

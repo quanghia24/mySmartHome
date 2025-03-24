@@ -43,6 +43,10 @@ func (m *mockRoomStore) CreateRoom(room types.Room) error {
 	return nil
 }
 
+func (m *mockRoomStore) DeleteRoom(roomId int, userId int) error {
+	return nil
+}
+
 type mockUserStore struct {
 }
 

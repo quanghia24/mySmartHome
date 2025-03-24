@@ -11,6 +11,7 @@ type UserStore interface {
 type RoomStore interface {
 	CreateRoom(Room) error
 	GetRoomsByUserID(userId int) ([]RoomInfoPayload, error)
+	DeleteRoom(roomId int, userId int) error
 }
 
 type DeviceStore interface {

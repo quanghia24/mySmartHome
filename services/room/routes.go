@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -27,6 +28,26 @@ func NewHandler(store types.RoomStore, userStore types.UserStore) *Handler {
 func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/rooms", auth.WithJWTAuth(h.getAllRoom, h.userStore)).Methods(http.MethodGet)
 	router.HandleFunc("/rooms", auth.WithJWTAuth(h.createRoom, h.userStore)).Methods(http.MethodPost)
+	router.HandleFunc("/rooms/{roomId}", auth.WithJWTAuth(h.deleteRoom, h.userStore)).Methods(http.MethodDelete)
+}
+
+func (h *Handler) deleteRoom(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	roomId, err := strconv.Atoi(params["roomId"])
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	userId := auth.GetUserIDFromContext(r.Context())
+
+	err = h.store.DeleteRoom(roomId, userId)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, fmt.Sprintf("Room %v has been deleted", roomId))
 }
 
 func (h *Handler) getAllRoom(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +69,6 @@ func (h *Handler) getAllRoom(w http.ResponseWriter, r *http.Request) {
 
 	utils.WriteJSON(w, http.StatusOK, rooms)
 }
-
 
 func (h *Handler) createRoom(w http.ResponseWriter, r *http.Request) {
 	userID := auth.GetUserIDFromContext(r.Context())

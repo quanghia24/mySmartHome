@@ -186,11 +186,12 @@ func (h *Handler) getAllDeviceBelongToID(w http.ResponseWriter, r *http.Request)
 
 func (h *Handler) getAllDeviceInRoom(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	id, _ := strconv.Atoi(params["roomID"])
+	roomId, _ := strconv.Atoi(params["roomID"])
 
 	// improve: check if room does exist
 
-	devices, err := h.store.GetDevicesInRoomID(id)
+
+	devices, err := h.store.GetDevicesInRoomID(roomId)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return

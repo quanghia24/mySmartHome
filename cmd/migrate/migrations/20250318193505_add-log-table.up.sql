@@ -8,6 +8,6 @@ CREATE TABLE IF NOT EXISTS `logs` (
     `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (`id`),
-    FOREIGN KEY (`deviceId`) REFERENCES devices(`feedId`),
-    FOREIGN KEY (`userId`) REFERENCES users(`id`)
+    FOREIGN KEY (`deviceId`) REFERENCES devices(`feedId`) ON DELETE CASCADE,
+    FOREIGN KEY (`userId`) REFERENCES users(`id`) ON DELETE CASCADE
 );

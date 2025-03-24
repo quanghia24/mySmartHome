@@ -21,6 +21,12 @@ func (s *Store) CreateRoom(room types.Room) error {
 	return err
 }
 
+func (s *Store) DeleteRoom(roomId int, userId int) error {
+	query := `DELETE FROM rooms WHERE rooms.id = ? AND rooms.userId = ?`
+	_, err := s.db.Exec(query, roomId, userId)
+	return err
+}
+
 func (s *Store) GetRoomsByUserID(userId int) ([]types.RoomInfoPayload, error) {
 	query := `
 		SELECT 
@@ -77,13 +83,13 @@ func scanRowsIntoRoom(rows *sql.Rows) (*types.RoomInfoPayload, error) {
 		&room.ID,
 		&room.Title,
 		&room.FanCount,
-		&room.LightCount,  
-		&room.DoorCount,  
+		&room.LightCount,
+		&room.DoorCount,
 		&room.SensorCount,
-		&room.FanStatus,   
+		&room.FanStatus,
 		&room.LightStatus,
-		&room.DoorStatus, 
-		&room.SensorStatus, 
+		&room.DoorStatus,
+		&room.SensorStatus,
 	)
 	if err != nil {
 		return nil, err
