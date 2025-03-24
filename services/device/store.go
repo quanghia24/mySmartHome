@@ -24,7 +24,7 @@ func (s *Store) CreateDevice(device types.Device) error {
 
 func (s *Store) GetDevicesByUserID(userId int) ([]types.DeviceDataPayload, error) {
 	query := `
-		SELECT d.feedId, l.value, d.type, d.title, l.createdAt
+		SELECT d.feedId, d.feedKey, l.value, d.type, d.title, l.createdAt
 		FROM devices d
 		LEFT JOIN logs l 
 			ON d.feedId = l.deviceId
@@ -56,10 +56,10 @@ func (s *Store) GetDevicesByUserID(userId int) ([]types.DeviceDataPayload, error
 
 func (s *Store) GetDevicesByFeedID(feedId int) (*types.DeviceDataPayload, error) {
 	query := `
-		SELECT devices.feedId, logs.value, devices.type, devices.title, logs.createdAt 
-		FROM devices 
-		LEFT JOIN logs ON devices.feedId=logs.deviceId
-		WHERE devices.feedId = ?
+		SELECT d.feedId, d.feedKey, logs.value, d.type, d.title, logs.createdAt 
+		FROM devices d
+		LEFT JOIN logs ON d.feedId=logs.deviceId
+		WHERE d.feedId = ?
 		ORDER BY logs.createdAt DESC
 		LIMIT 1
 	`
@@ -67,6 +67,7 @@ func (s *Store) GetDevicesByFeedID(feedId int) (*types.DeviceDataPayload, error)
 	var deviceData types.DeviceDataPayload
 	err := s.db.QueryRow(query, feedId).Scan(
 		&deviceData.FeedID,
+		&deviceData.FeedKey,
 		&deviceData.Value,
 		&deviceData.Type,
 		&deviceData.Title,
@@ -84,7 +85,7 @@ func (s *Store) GetDevicesByFeedID(feedId int) (*types.DeviceDataPayload, error)
 
 func (s *Store) GetDevicesInRoomID(id int) ([]types.DeviceDataPayload, error) {
 	query := `
-		SELECT d.feedId, l.value, d.type, d.title, l.createdAt
+		SELECT d.feedId, d.feedKey, l.value, d.type, d.title, l.createdAt
 		FROM devices d
 		LEFT JOIN logs l 
 			ON d.feedId = l.deviceId
@@ -136,6 +137,7 @@ func scanRowsIntoDeviceDataPayload(rows *sql.Rows) (*types.DeviceDataPayload, er
 
 	err := rows.Scan(
 		&device.FeedID,
+		&device.FeedKey,
 		&device.Value,
 		&device.Type,
 		&device.Title,

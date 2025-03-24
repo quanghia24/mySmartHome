@@ -27,15 +27,15 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 }
 
 func (h *Handler) getAllDeviceBelongToID(w http.ResponseWriter, r *http.Request) {
-	id := auth.GetUserIDFromContext(r.Context())
+	userId := auth.GetUserIDFromContext(r.Context())
 
-	_, err := h.userStore.GetUserByID(id)
+	_, err := h.userStore.GetUserByID(userId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("requested user doesn't exists"))
 		return
 	}
 
-	logs, err := h.store.GetLogsByID(id)
+	logs, err := h.store.GetLogsByUserID(userId)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return

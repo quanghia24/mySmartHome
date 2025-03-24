@@ -22,7 +22,8 @@ type DeviceStore interface {
 
 type LogStore interface {
 	CreateLog(Log) error
-	GetLogsByID(id int) ([]Log, error)
+	GetLogsByUserID(userId int) ([]Log, error)
+	GetLogsByFeedID(feedId int) ([]Log, error)
 }
 
 type ProductStore interface {
@@ -141,6 +142,7 @@ type CreateDevicePayload struct {
 
 type DeviceDataPayload struct {
 	FeedID    string    `json:"feedId"`
+	FeedKey   string    `json:"feedKey"`
 	Value     string    `json:"value" validate:"required"`
 	Type      string    `json:"type"`
 	Title     string    `json:"title"`
@@ -159,12 +161,12 @@ type RoomInfoPayload struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
 
-	FanCount    int  `json:"fanCount"`
-	LightCount  int  `json:"lightCount"`
-	DoorCount   int  `json:"doorCount"`
-	SensorCount int `json:"sensorCount"`
-	FanStatus   int `json:"fanStatus"`
-	LightStatus int `json:"lightStatus"`
-	DoorStatus  int `json:"doorStatus"`
+	FanCount     int `json:"fanCount"`
+	LightCount   int `json:"lightCount"`
+	DoorCount    int `json:"doorCount"`
+	SensorCount  int `json:"sensorCount"`
+	FanStatus    int `json:"fanStatus"`
+	LightStatus  int `json:"lightStatus"`
+	DoorStatus   int `json:"doorStatus"`
 	SensorStatus int `json:"sensorStatus"`
 }

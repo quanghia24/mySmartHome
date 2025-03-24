@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -37,20 +36,32 @@ func NewHandler(store types.DeviceStore, userStore types.UserStore, roomStore ty
 func (h *Handler) RegisterRoutes(router *mux.Router) {
 	// get
 	router.HandleFunc("/devices", auth.WithJWTAuth(h.getAllDeviceBelongToID, h.userStore)).Methods(http.MethodGet)
-	router.HandleFunc("/devices/{feed_key}/data", h.getDeviceData).Methods(http.MethodGet)
+	router.HandleFunc("/devices/{feed_id}/logs", h.getDeviceData).Methods(http.MethodGet)
 	router.HandleFunc("/devices/{feed_id}", h.getDeviceInfo).Methods(http.MethodGet)
 	router.HandleFunc("/devices/room/{roomID}", h.getAllDeviceInRoom).Methods(http.MethodGet)
 	// post
 	router.HandleFunc("/devices", auth.WithJWTAuth(h.createDevice, h.userStore)).Methods(http.MethodPost)
-	router.HandleFunc("/devices/{feed_key}", auth.WithJWTAuth(h.addDeviceData, h.userStore)).Methods(http.MethodPost)
+	router.HandleFunc("/devices/{feed_id}", auth.WithJWTAuth(h.addDeviceData, h.userStore)).Methods(http.MethodPost)
 }
 
 func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	url := os.Getenv("AIOAPI") + params["feed_key"] + "/data"
+	feedId, err := strconv.Atoi(params["feed_id"])
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	device, err := h.store.GetDevicesByFeedID(feedId)
+	if err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	url := os.Getenv("AIOAPI") + device.FeedKey + "/data"
 	log.Println("adding data to", url)
 
-	// userId := auth.GetUserIDFromContext(r.Context())
+	userId := auth.GetUserIDFromContext(r.Context())
 
 	var payload types.DeviceDataPayload
 	if err := utils.ParseJSON(r, &payload); err != nil {
@@ -92,65 +103,44 @@ func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 
 	// make the request
 	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return
-	}
-	defer resp.Body.Close()
-
-	// read response body
-	respBody, err := io.ReadAll(resp.Body)
+	_, err = client.Do(req)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	var jsonResponse types.DeviceDataPayload
-	if err := json.Unmarshal(respBody, &jsonResponse); err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
+	device.Value = payload.Value
+
+	err = h.logStore.CreateLog(types.Log{
+		Type:     "onoff",
+		Message:  fmt.Sprintf("%s got value %s", device.FeedKey, device.Value),
+		DeviceID: feedId,
+		UserID:   userId,
+		Value:    device.Value,
+	})
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log creation:%v", err))
 		return
 	}
 
-	// err = h.logStore.CreateLog(types.Log{
-	// 	Type:      "onoff",
-	// 	Message:   fmt.Sprintf("%s got value %s", params["feed_key"], jsonResponse.Value),
-	// 	DeviceID:  jsonResponse.FeedId,
-	// 	UserID:    userId,
-	// 	Value:     jsonResponse.Value,
-	// 	CreatedAt: jsonResponse.CreatedAt,
-	// })
-	// if err != nil {
-	// 	utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log creation:%v", err))
-	// 	return
-	// }
-
-	utils.WriteJSON(w, http.StatusOK, jsonResponse)
+	utils.WriteJSON(w, http.StatusOK, device)
 }
 
 func (h *Handler) getDeviceData(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	url := os.Getenv("AIOAPI") + params["feed_key"] + "/data"
-	log.Println("calling", url)
-
-	res, err := http.Get(url)
+	feedId, err := strconv.Atoi(params["feed_id"])
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-	responseData, err := io.ReadAll(res.Body)
-	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
-
-	var jsonResponse []types.DeviceDataPayload
-	if err := json.Unmarshal(responseData, &jsonResponse); err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, jsonResponse)
+	logs, err := h.logStore.GetLogsByFeedID(feedId)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, logs)
 }
 
 func (h *Handler) getDeviceInfo(w http.ResponseWriter, r *http.Request) {
@@ -160,10 +150,8 @@ func (h *Handler) getDeviceInfo(w http.ResponseWriter, r *http.Request) {
 	deviceData, err := h.store.GetDevicesByFeedID(feedId)
 	if err != nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("get device info:%s", err))
-		return 
+		return
 	}
-
-	
 
 	// var jsonResponse []types.DeviceDataPayload
 	// if err := json.Unmarshal(responseData, &jsonResponse); err != nil {

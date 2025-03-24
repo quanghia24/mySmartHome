@@ -22,8 +22,36 @@ func (s *Store) CreateLog(log types.Log) error {
 
 }
 
-func (s *Store) GetLogsByID(id int) ([]types.Log, error) {
-	rows, err := s.db.Query("SELECT * FROM logs WHERE userID = ?", id)
+func (s *Store) GetLogsByFeedID(feedId int) ([]types.Log, error) {
+	query := `
+		SELECT * FROM logs WHERE deviceId = ?
+		ORDER BY logs.createdAt DESC
+	`
+	
+	rows, err := s.db.Query(query, feedId)
+	if err != nil {
+		return nil, err
+	}
+
+	logs := []types.Log{}
+
+	for rows.Next() {
+		l, err := scanRowIntoLog(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		logs = append(logs, *l)
+	}
+	return logs, nil
+}
+
+func (s *Store) GetLogsByUserID(userId int) ([]types.Log, error) {
+	query := `
+		SELECT * FROM logs WHERE userId = ?
+		ORDER BY logs.createdAt DESC
+	`
+	rows, err := s.db.Query(query, userId)
 	if err != nil {
 		return nil, err
 	}
