@@ -47,6 +47,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	feedId, err := strconv.Atoi(params["feed_id"])
+
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
@@ -69,7 +70,17 @@ func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(payload)
+	if device.Type == "fan" {
+		if payload.Value == "1" {
+			payload.Value = "50"
+		} else if payload.Value == "2" {
+			payload.Value = "75"
+		} else if payload.Value == "3" {
+			payload.Value = "100"
+		} else {
+			payload.Value = "0"
+		}
+	} 
 
 	payload.CreatedAt = time.Now()
 
@@ -189,7 +200,6 @@ func (h *Handler) getAllDeviceInRoom(w http.ResponseWriter, r *http.Request) {
 	roomId, _ := strconv.Atoi(params["roomID"])
 
 	// improve: check if room does exist
-
 
 	devices, err := h.store.GetDevicesInRoomID(roomId)
 	if err != nil {
