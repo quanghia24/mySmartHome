@@ -14,7 +14,6 @@ require (
 
 require (
 	github.com/gorilla/handlers v1.4.2
-	github.com/joho/godotenv v1.5.1
 )
 
 require (

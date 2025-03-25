@@ -33,19 +33,15 @@ func (s *Store) GetRoomsByUserID(userId int) ([]types.RoomInfoPayload, error) {
 			r.id,
 			r.title,
 
-			-- Fan count & status
 			COUNT(CASE WHEN d.type = 'fan' THEN 1 END) AS fanC,
 			MAX(CASE WHEN d.type = 'fan' AND l.value > 0 THEN 1 ELSE 0 END) AS fanS,
 
-			-- Light count & status
 			COUNT(CASE WHEN d.type = 'light' THEN 1 END) AS lightC,
 			MAX(CASE WHEN d.type = 'light' AND l.value > 0 THEN 1 ELSE 0 END) AS lightS,
 
-			-- Door count & status
 			COUNT(CASE WHEN d.type = 'door' THEN 1 END) AS doorC,
 			MAX(CASE WHEN d.type = 'door' AND l.value > 0 THEN 1 ELSE 0 END) AS doorS,
 
-			-- Sensor count & status
 			COUNT(CASE WHEN d.type = 'sensor' THEN 1 END) AS sensorC,
 			MAX(CASE WHEN d.type = 'sensor' AND l.value > 0 THEN 1 ELSE 0 END) AS sensorS
 
@@ -83,12 +79,12 @@ func scanRowsIntoRoom(rows *sql.Rows) (*types.RoomInfoPayload, error) {
 		&room.ID,
 		&room.Title,
 		&room.FanCount,
-		&room.LightCount,
-		&room.DoorCount,
-		&room.SensorCount,
 		&room.FanStatus,
+		&room.LightCount,
 		&room.LightStatus,
+		&room.DoorCount,
 		&room.DoorStatus,
+		&room.SensorCount,
 		&room.SensorStatus,
 	)
 	if err != nil {
