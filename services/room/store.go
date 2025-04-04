@@ -41,18 +41,17 @@ func (s *Store) GetRoomsByUserID(userId int) ([]types.RoomInfoPayload, error) {
 
 			COUNT(CASE WHEN d.type = 'door' THEN 1 END) AS doorC,
 			MAX(CASE WHEN d.type = 'door' AND l.value > 0 THEN 1 ELSE 0 END) AS doorS,
-
-			COUNT(CASE WHEN d.type = 'sensor' THEN 1 END) AS sensorC,
-			MAX(CASE WHEN d.type = 'sensor' AND l.value > 0 THEN 1 ELSE 0 END) AS sensorS
-
-		FROM rooms r
+      
+      		(SELECT (COUNT(*)) FROM sensors s WHERE s.roomId = r.id) as sensorC 
+      
+    	FROM rooms r 
 		LEFT JOIN devices d ON r.id = d.roomId
 		LEFT JOIN logs l ON d.feedId = l.deviceId
 		AND l.createdAt = (
 			SELECT MAX(l2.createdAt) FROM logs l2 WHERE l2.deviceId = d.feedId
 		)
 		WHERE r.userId = ?
-		GROUP BY r.id
+		GROUP BY r.id;
 	`
 	rows, err := s.db.Query(query, userId)
 	if err != nil {
@@ -85,7 +84,6 @@ func scanRowsIntoRoom(rows *sql.Rows) (*types.RoomInfoPayload, error) {
 		&room.DoorCount,
 		&room.DoorStatus,
 		&room.SensorCount,
-		&room.SensorStatus,
 	)
 	if err != nil {
 		return nil, err

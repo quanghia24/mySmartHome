@@ -21,10 +21,22 @@ type DeviceStore interface {
 	GetDevicesInRoomID(id int) ([]DeviceDataPayload, error)
 }
 
-type LogStore interface {
-	CreateLog(Log) error
-	GetLogsByUserID(userId int) ([]Log, error)
-	GetLogsByFeedID(feedId int) ([]Log, error)
+type SensorStore interface {
+	CreateSensor(Sensor) error
+	GetSensorByFeedID(feedId int) (*DeviceDataPayload, error)
+	GetAllSensor() ([]Sensor, error)
+}
+
+type LogDeviceStore interface {
+	CreateLog(LogDevice) error
+	GetLogsByUserID(userId int) ([]LogDevice, error)
+	GetLogsByFeedID(feedId int) ([]LogDevice, error)
+}
+
+type LogSensorStore interface {
+	CreateLogSensor(LogSensor) error
+	GetLogSensorsByUserID(userId int) ([]LogSensor, error)
+	GetLogSensorsByFeedID(feedId int) ([]LogSensor, error)
 }
 
 type ProductStore interface {
@@ -39,7 +51,29 @@ type OrderStore interface {
 	CreateOrderItem(OrderItem) error
 }
 
-type Log struct {
+type DoorStore interface {
+	CreatePassword(DoorPassword) error
+	GetPassword(feedId int) (*DoorPassword, error)
+}
+
+type DoorPassword struct {
+	ID        int       `json:"id"`
+	FeedID    int       `json:"feedId"`
+	PWD       string    `json:"pwd"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type LogSensor struct {
+	ID        int       `json:"id"`
+	Type      string    `json:"type"`
+	Message   string    `json:"message"`
+	SensorID  int       `json:"sensorID"`
+	UserID    int       `json:"userID"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type LogDevice struct {
 	ID        int       `json:"id"`
 	Type      string    `json:"type"`
 	Message   string    `json:"message"`
@@ -56,6 +90,15 @@ type Room struct {
 }
 
 type Device struct {
+	FeedId  int    `json:"feedId"`
+	FeedKey string `json:"feedKey"`
+	Title   string `json:"title"`
+	Type    string `json:"type"`
+	UserID  int    `json:"userID"`
+	RoomID  int    `json:"roomID"`
+}
+
+type Sensor struct {
 	FeedId  int    `json:"feedId"`
 	FeedKey string `json:"feedKey"`
 	Title   string `json:"title"`
@@ -142,7 +185,7 @@ type CreateDevicePayload struct {
 }
 
 type DeviceDataPayload struct {
-	FeedID    string    `json:"feedId"`
+	FeedID    int       `json:"feedId"`
 	FeedKey   string    `json:"feedKey"`
 	Value     string    `json:"value" validate:"required"`
 	Type      string    `json:"type"`
@@ -162,12 +205,18 @@ type RoomInfoPayload struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
 
-	FanCount     int `json:"fanCount"`
-	LightCount   int `json:"lightCount"`
-	DoorCount    int `json:"doorCount"`
-	SensorCount  int `json:"sensorCount"`
-	FanStatus    int `json:"fanStatus"`
-	LightStatus  int `json:"lightStatus"`
-	DoorStatus   int `json:"doorStatus"`
-	SensorStatus int `json:"sensorStatus"`
+	FanCount    int `json:"fanCount"`
+	FanStatus   int `json:"fanStatus"`
+	LightCount  int `json:"lightCount"`
+	LightStatus int `json:"lightStatus"`
+	DoorCount   int `json:"doorCount"`
+	DoorStatus  int `json:"doorStatus"`
+	SensorCount int `json:"sensorCount"`
+}
+
+type SensorDataPayload struct {
+	FeedId    int       `json:"feed_id"`
+	FeedKey   string    `json:"feed_key"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"created_at"`
 }

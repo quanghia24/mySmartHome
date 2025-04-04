@@ -1,4 +1,4 @@
-package log_device
+package log_sensor
 
 import (
 	"database/sql"
@@ -16,15 +16,15 @@ func NewStore(db *sql.DB) *Store {
 	}
 }
 
-func (s *Store) CreateLog(log types.LogDevice) error {
-	_, err := s.db.Exec("INSERT INTO logs (type, message, deviceID, userID, value) VALUES (?,?,?,?,?)", log.Type, log.Message, log.DeviceID, log.UserID, log.Value)
+func (s *Store) CreateLogSensor(log types.LogSensor) error {
+	_, err := s.db.Exec("INSERT INTO logs_sensor (type, message, sensorID, userID, value) VALUES (?,?,?,?,?)", log.Type, log.Message, log.SensorID, log.UserID, log.Value)
 	return err
 
 }
 
-func (s *Store) GetLogsByFeedID(feedId int) ([]types.LogDevice, error) {
+func (s *Store) GetLogSensorsByFeedID(feedId int) ([]types.LogSensor, error) {
 	query := `
-		SELECT * FROM logs WHERE deviceId = ?
+		SELECT * FROM logs_sensor WHERE deviceId = ?
 		ORDER BY logs.createdAt DESC
 	`
 
@@ -33,7 +33,7 @@ func (s *Store) GetLogsByFeedID(feedId int) ([]types.LogDevice, error) {
 		return nil, err
 	}
 
-	logs := []types.LogDevice{}
+	logs := []types.LogSensor{}
 
 	for rows.Next() {
 		l, err := scanRowIntoLog(rows)
@@ -46,17 +46,17 @@ func (s *Store) GetLogsByFeedID(feedId int) ([]types.LogDevice, error) {
 	return logs, nil
 }
 
-func (s *Store) GetLogsByUserID(userId int) ([]types.LogDevice, error) {
+func (s *Store) GetLogSensorsByUserID(userId int) ([]types.LogSensor, error) {
 	query := `
-		SELECT * FROM logs WHERE userId = ?
-		ORDER BY logs.createdAt DESC
+		SELECT * FROM logs_sensor WHERE userId = ?
+		ORDER BY logs_sensor.createdAt DESC
 	`
 	rows, err := s.db.Query(query, userId)
 	if err != nil {
 		return nil, err
 	}
 
-	logs := []types.LogDevice{}
+	logs := []types.LogSensor{}
 
 	for rows.Next() {
 		l, err := scanRowIntoLog(rows)
@@ -69,14 +69,14 @@ func (s *Store) GetLogsByUserID(userId int) ([]types.LogDevice, error) {
 	return logs, nil
 }
 
-func scanRowIntoLog(rows *sql.Rows) (*types.LogDevice, error) {
-	log := new(types.LogDevice)
+func scanRowIntoLog(rows *sql.Rows) (*types.LogSensor, error) {
+	log := new(types.LogSensor)
 
 	err := rows.Scan(
 		&log.ID,
 		&log.Type,
 		&log.Message,
-		&log.DeviceID,
+		&log.SensorID,
 		&log.UserID,
 		&log.Value,
 		&log.CreatedAt,

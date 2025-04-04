@@ -51,8 +51,6 @@ func (h *Handler) deleteRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getAllRoom(w http.ResponseWriter, r *http.Request) {
-	// params := mux.Vars(r)
-	// id, _ := strconv.Atoi(params["userID"])
 	id := auth.GetUserIDFromContext(r.Context())
 
 	_, err := h.userStore.GetUserByID(id)

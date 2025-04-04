@@ -11,11 +11,11 @@ import (
 )
 
 type Handler struct {
-	store     types.LogStore
+	store     types.LogDeviceStore
 	userStore types.UserStore
 }
 
-func NewHandler(store types.LogStore, userStore types.UserStore) *Handler {
+func NewHandler(store types.LogDeviceStore, userStore types.UserStore) *Handler {
 	return &Handler{
 		store:     store,
 		userStore: userStore,

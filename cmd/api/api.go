@@ -9,10 +9,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/quanghia24/mySmartHome/services/cart"
 	"github.com/quanghia24/mySmartHome/services/device"
+	"github.com/quanghia24/mySmartHome/services/doorpwd"
 	"github.com/quanghia24/mySmartHome/services/log_device"
+	"github.com/quanghia24/mySmartHome/services/log_sensor"
 	"github.com/quanghia24/mySmartHome/services/order"
 	"github.com/quanghia24/mySmartHome/services/product"
 	"github.com/quanghia24/mySmartHome/services/room"
+	"github.com/quanghia24/mySmartHome/services/sensor"
 	"github.com/quanghia24/mySmartHome/services/user"
 )
 
@@ -59,13 +62,23 @@ func (s *APIServer) Run() error {
 	roomHandler := room.NewHandler(roomStore, userStore)
 	roomHandler.RegisterRoutes(subrouter)
 
-	logStore := log_device.NewStore(s.db)
-	logHandler := log_device.NewHandler(logStore, userStore)
-	logHandler.RegisterRoutes(subrouter)
+	logDeviceStore := log_device.NewStore(s.db)
+	logDeviceHandler := log_device.NewHandler(logDeviceStore, userStore)
+	logDeviceHandler.RegisterRoutes(subrouter)
+
+	doorStore := doorpwd.NewStore(s.db)
 
 	deviceStore := device.NewStore(s.db)
-	deviceHandler := device.NewHandler(deviceStore, userStore, roomStore, logStore)
+	deviceHandler := device.NewHandler(deviceStore, userStore, roomStore, logDeviceStore, doorStore)
 	deviceHandler.RegisterRoutes(subrouter)
+
+	logSensorStore := log_sensor.NewStore(s.db)
+
+	sensorStore := sensor.NewStore(s.db)
+	sensorHandler := sensor.NewHandler(sensorStore, userStore, logSensorStore)
+	sensorHandler.RegisterRoutes(subrouter)
+
+	go sensorHandler.StartSensorDataPolling()
 
 	fmt.Println("Listening on port", s.addr)
 

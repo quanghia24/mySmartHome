@@ -23,7 +23,7 @@ func (s *Store) CreateDevice(device types.Device) error {
 }
 
 func (s *Store) GetDevicesByUserID(userId int) ([]types.DeviceDataPayload, error) {
-	query := `
+	dquery := `
 		SELECT d.feedId, d.feedKey, l.value, d.type, d.title, l.createdAt
 		FROM devices d
 		LEFT JOIN logs l 
@@ -36,21 +36,54 @@ func (s *Store) GetDevicesByUserID(userId int) ([]types.DeviceDataPayload, error
 		WHERE d.userID = ?;
 	`
 
-	rows, err := s.db.Query(query, userId)
+	drows, err := s.db.Query(dquery, userId)
 	if err != nil {
 		return nil, err
 	}
 
+	squery := `
+		SELECT d.feedId, d.feedKey, l.value, d.type, d.title, l.createdAt
+		FROM sensors d
+		LEFT JOIN logs_sensor l 
+			ON d.feedId = l.sensorId
+			AND l.createdAt = (
+				SELECT MAX(l2.createdAt)
+				FROM logs_sensor l2
+				WHERE l2.sensorId = d.feedId
+			)
+		WHERE d.userID = ?;
+	`
+
+	srows, err := s.db.Query(squery, userId)
+	if err != nil {
+		return nil, err
+	}
+
+
+
 	devices := []types.DeviceDataPayload{}
 
-	for rows.Next() {
-		d, err := scanRowsIntoDeviceDataPayload(rows)
+
+
+
+	for drows.Next() {
+		d, err := scanRowsIntoDeviceDataPayload(drows)
 		if err != nil {
 			return nil, err
 		}
 
 		devices = append(devices, *d)
 	}
+
+	for srows.Next() {
+		d, err := scanRowsIntoDeviceDataPayload(srows)
+		if err != nil {
+			return nil, err
+		}
+
+		devices = append(devices, *d)
+	}
+
 	return devices, nil
 }
 
@@ -84,7 +117,7 @@ func (s *Store) GetDevicesByFeedID(feedId int) (*types.DeviceDataPayload, error)
 }
 
 func (s *Store) GetDevicesInRoomID(roomId int) ([]types.DeviceDataPayload, error) {
-	query := `
+	dquery := `
 		SELECT d.feedId, d.feedKey, l.value, d.type, d.title, l.createdAt
 		FROM devices d
 		LEFT JOIN logs l 
@@ -96,41 +129,51 @@ func (s *Store) GetDevicesInRoomID(roomId int) ([]types.DeviceDataPayload, error
 			)
 		WHERE d.roomId = ?;
 	`
-	rows, err := s.db.Query(query, roomId)
+
+	squery := `
+		SELECT d.feedId, d.feedKey, l.value, d.type, d.title, l.createdAt
+		FROM sensors d
+		LEFT JOIN logs_sensor l 
+			ON d.feedId = l.sensorId
+			AND l.createdAt = (
+				SELECT MAX(l2.createdAt)
+				FROM logs_sensor l2
+				WHERE l2.sensorId = d.feedId
+			)
+		WHERE d.roomId = ?;
+	`
+
+	drows, err := s.db.Query(dquery, roomId)
+	if err != nil {
+		return nil, err
+	}
+
+	srows, err := s.db.Query(squery, roomId)
 	if err != nil {
 		return nil, err
 	}
 
 	devices := []types.DeviceDataPayload{}
 
-	for rows.Next() {
-		d, err := scanRowsIntoDeviceDataPayload(rows)
+	for drows.Next() {
+		d, err := scanRowsIntoDeviceDataPayload(drows)
 		if err != nil {
 			return nil, err
 		}
 
 		devices = append(devices, *d)
 	}
+	for srows.Next() {
+		d, err := scanRowsIntoDeviceDataPayload(srows)
+		if err != nil {
+			return nil, err
+		}
+
+		devices = append(devices, *d)
+	}
+
 	return devices, nil
 }
-
-// func scanRowsIntoDevice(rows *sql.Rows) (*types.Device, error) {
-// 	device := new(types.Device)
-
-// 	err := rows.Scan(
-// 		&device.FeedId,
-// 		&device.FeedKey,
-// 		&device.Title,
-// 		&device.Type,
-// 		&device.UserID,
-// 		&device.RoomID,
-// 	)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	return device, nil
-// }
 
 func scanRowsIntoDeviceDataPayload(rows *sql.Rows) (*types.DeviceDataPayload, error) {
 	device := new(types.DeviceDataPayload)

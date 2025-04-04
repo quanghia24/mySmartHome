@@ -1,8 +1,8 @@
-CREATE TABLE IF NOT EXISTS devices (
+CREATE TABLE IF NOT EXISTS `sensors` (
     `feedId` INT UNSIGNED NOT NULL,
     `feedKey` VARCHAR(255) NOT NULL,
     `title` VARCHAR(255) NOT NULL,
-    `type` ENUM('fan', 'light', 'door') NOT NULL,
+    `type` ENUM('humidity', 'temperature', 'brightness') NOT NULL,
     `userId` INT UNSIGNED NOT NULL,
     `roomId` INT UNSIGNED NOT NULL,
     

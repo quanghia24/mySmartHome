@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -21,15 +20,17 @@ type Handler struct {
 	store     types.DeviceStore
 	userStore types.UserStore
 	roomStore types.RoomStore
-	logStore  types.LogStore
+	logStore  types.LogDeviceStore
+	doorStore types.DoorStore
 }
 
-func NewHandler(store types.DeviceStore, userStore types.UserStore, roomStore types.RoomStore, logStore types.LogStore) *Handler {
+func NewHandler(store types.DeviceStore, userStore types.UserStore, roomStore types.RoomStore, logStore types.LogDeviceStore, doorStore types.DoorStore) *Handler {
 	return &Handler{
 		store:     store,
 		userStore: userStore,
 		roomStore: roomStore,
 		logStore:  logStore,
+		doorStore: doorStore,
 	}
 }
 
@@ -38,16 +39,99 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/devices", auth.WithJWTAuth(h.getAllDeviceBelongToID, h.userStore)).Methods(http.MethodGet)
 	router.HandleFunc("/devices/{feed_id}/logs", h.getDeviceData).Methods(http.MethodGet)
 	router.HandleFunc("/devices/{feed_id}", h.getDeviceInfo).Methods(http.MethodGet)
+	router.HandleFunc("/devices/{feed_id}/usage", h.getDeviceUsage).Methods(http.MethodGet)
 	router.HandleFunc("/devices/room/{roomID}", h.getAllDeviceInRoom).Methods(http.MethodGet)
 	// post
 	router.HandleFunc("/devices", auth.WithJWTAuth(h.createDevice, h.userStore)).Methods(http.MethodPost)
 	router.HandleFunc("/devices/{feed_id}", auth.WithJWTAuth(h.addDeviceData, h.userStore)).Methods(http.MethodPost)
+	router.HandleFunc("/devices/{feed_id}/setpwd", h.setPassword).Methods(http.MethodPost)
+	router.HandleFunc("/devices/{feed_id}/getpwd", h.getPassword).Methods(http.MethodGet)
+	router.HandleFunc("/devices/{feed_id}/checkpwd", h.checkPassword).Methods(http.MethodPost)
+
+}
+
+func (h *Handler) getDeviceUsage(w http.ResponseWriter, r *http.Request) {
+	utils.WriteJSON(w, http.StatusOK, nil)
+}
+
+func (h *Handler) setPassword(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	feedId, _ := strconv.Atoi(params["feed_id"])
+
+	var payload struct {
+		PWD string `json:"pwd"`
+	}
+
+	if err := utils.ParseJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	err := h.doorStore.CreatePassword(types.DoorPassword{
+		FeedID: feedId,
+		PWD:    payload.PWD,
+	})
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, "pwd updated")
+}
+
+func (h *Handler) getPassword(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	feedId, _ := strconv.Atoi(params["feed_id"])
+
+	var payload struct {
+		PWD string `json:"pwd"`
+	}
+
+	pwd, err := h.doorStore.GetPassword(feedId)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	payload.PWD = pwd.PWD
+
+	utils.WriteJSON(w, http.StatusOK, payload)
+}
+
+func (h *Handler) checkPassword(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	feedId, _ := strconv.Atoi(params["feed_id"])
+
+	pwd, err := h.doorStore.GetPassword(feedId)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if pwd.PWD == "" {
+		utils.WriteJSON(w, http.StatusOK, "door unlocked")
+		return
+	}
+
+	var payload struct {
+		PWD string `json:"pwd"`
+	}
+
+	if err := utils.ParseJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if payload.PWD == pwd.PWD {
+		utils.WriteJSON(w, http.StatusOK, "door unlocked")
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, "wrong password")
 }
 
 func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	feedId, err := strconv.Atoi(params["feed_id"])
-
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
@@ -80,10 +164,18 @@ func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 		} else {
 			payload.Value = "0"
 		}
-	} 
+	} else if device.Type == "door" {
+		err := h.doorStore.CreatePassword(types.DoorPassword{
+			FeedID: feedId,
+			PWD:    "",
+		})
+		if err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, err)
+			return
+		}
+	}
 
-	payload.CreatedAt = time.Now()
-
+	// payload.CreatedAt = time.Now()
 	if err := utils.Validate.Struct(payload); err != nil {
 		errors := err.(validator.ValidationErrors)
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload %v", errors))
@@ -122,9 +214,23 @@ func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 
 	device.Value = payload.Value
 
-	err = h.logStore.CreateLog(types.Log{
+	msg := ""
+	switch device.Type {
+	case "door":
+		if device.Value == "0" {
+			msg = fmt.Sprintf("[%s] got closed", device.Title)
+		} else {
+			msg = fmt.Sprintf("[%s] got opened", device.Title)
+		}
+	case "fan":
+		msg = fmt.Sprintf("[%s]'s set at level: %s", device.Title, device.Value)
+	case "light":
+		msg = fmt.Sprintf("[%s]'s set color: %s", device.Title, device.Value)
+	}
+
+	err = h.logStore.CreateLog(types.LogDevice{
 		Type:     "onoff",
-		Message:  fmt.Sprintf("%s got value %s", device.FeedKey, device.Value),
+		Message:  msg,
 		DeviceID: feedId,
 		UserID:   userId,
 		Value:    device.Value,
@@ -190,8 +296,6 @@ func (h *Handler) getAllDeviceBelongToID(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	fmt.Println(userId, devices)
-
 	utils.WriteJSON(w, http.StatusOK, devices)
 }
 
@@ -222,7 +326,7 @@ func (h *Handler) getAllDeviceInRoom(w http.ResponseWriter, r *http.Request) {
 			response["lightList"] = append(response["lightList"], d)
 		case "door":
 			response["doorList"] = append(response["doorList"], d)
-		case "sensor":
+		default:
 			response["sensorList"] = append(response["sensorList"], d)
 		}
 	}
@@ -263,9 +367,9 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 		value = "#000000"
 	}
 
-	err = h.logStore.CreateLog(types.Log{
+	err = h.logStore.CreateLog(types.LogDevice{
 		Type:     "creation",
-		Message:  fmt.Sprintf("%s got added to the system", payload.Title),
+		Message:  fmt.Sprintf("[%s] got added", payload.Title),
 		DeviceID: payload.FeedID,
 		UserID:   userId,
 		Value:    value,
@@ -274,6 +378,17 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log creation error:%v", err))
 		return
+	}
+
+	if payload.Type == "door" {
+		err := h.doorStore.CreatePassword(types.DoorPassword{
+			FeedID: payload.FeedID,
+			PWD:    "",
+		})
+		if err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, err)
+			return
+		}
 	}
 
 	utils.WriteJSON(w, http.StatusCreated, nil)
