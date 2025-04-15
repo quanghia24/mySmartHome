@@ -78,18 +78,6 @@ func (h *Handler) createSensor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// err = h.logSensorStore.CreateLogSensor(types.LogSensor{
-	// 	Type:     "creation",
-	// 	Message:  fmt.Sprintf("%s got added to the system", payload.Title),
-	// 	SensorID: payload.FeedID,
-	// 	UserID:   userId,
-	// 	Value:    "0",
-	// })
-	// if err != nil {
-	// 	utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log sensor creation error:%v", err))
-	// 	return
-	// }
-
 	utils.WriteJSON(w, http.StatusCreated, nil)
 }
 

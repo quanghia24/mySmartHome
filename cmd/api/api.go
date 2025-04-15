@@ -15,6 +15,7 @@ import (
 	"github.com/quanghia24/mySmartHome/services/order"
 	"github.com/quanghia24/mySmartHome/services/product"
 	"github.com/quanghia24/mySmartHome/services/room"
+	"github.com/quanghia24/mySmartHome/services/schedule"
 	"github.com/quanghia24/mySmartHome/services/sensor"
 	"github.com/quanghia24/mySmartHome/services/user"
 )
@@ -79,6 +80,12 @@ func (s *APIServer) Run() error {
 	sensorHandler.RegisterRoutes(subrouter)
 
 	go sensorHandler.StartSensorDataPolling()
+
+	scheduleStore := schedule.NewStore(s.db)
+	scheduleHandler := schedule.NewHandler(scheduleStore, deviceStore, logDeviceStore, doorStore, userStore)
+	scheduleHandler.RegisterRoutes(subrouter)
+
+	scheduleHandler.StartSchedule()
 
 	fmt.Println("Listening on port", s.addr)
 

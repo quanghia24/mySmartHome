@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -39,7 +40,6 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/devices", auth.WithJWTAuth(h.getAllDeviceBelongToID, h.userStore)).Methods(http.MethodGet)
 	router.HandleFunc("/devices/{feed_id}/logs", h.getDeviceData).Methods(http.MethodGet)
 	router.HandleFunc("/devices/{feed_id}", h.getDeviceInfo).Methods(http.MethodGet)
-	router.HandleFunc("/devices/{feed_id}/usage", h.getDeviceUsage).Methods(http.MethodGet)
 	router.HandleFunc("/devices/room/{roomID}", h.getAllDeviceInRoom).Methods(http.MethodGet)
 	// post
 	router.HandleFunc("/devices", auth.WithJWTAuth(h.createDevice, h.userStore)).Methods(http.MethodPost)
@@ -48,10 +48,24 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/devices/{feed_id}/getpwd", h.getPassword).Methods(http.MethodGet)
 	router.HandleFunc("/devices/{feed_id}/checkpwd", h.checkPassword).Methods(http.MethodPost)
 
+	// delete
+	router.HandleFunc("/devices/{feed_id}", auth.WithJWTAuth(h.deleteDevice, h.userStore)).Methods(http.MethodDelete)
+
 }
 
-func (h *Handler) getDeviceUsage(w http.ResponseWriter, r *http.Request) {
-	utils.WriteJSON(w, http.StatusOK, nil)
+func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	deviceId := params["feed_id"]
+	userId := auth.GetUserIDFromContext(r.Context())
+
+	err := h.store.DeleteDevice(deviceId, userId)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+
+	utils.WriteJSON(w, http.StatusOK, fmt.Sprintf("Device %v has been deleted", deviceId))
+
 }
 
 func (h *Handler) setPassword(w http.ResponseWriter, r *http.Request) {
@@ -126,7 +140,7 @@ func (h *Handler) checkPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.WriteJSON(w, http.StatusOK, "wrong password")
+	utils.WriteJSON(w, http.StatusUnauthorized, "wrong password")
 }
 
 func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
@@ -175,7 +189,12 @@ func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// payload.CreatedAt = time.Now()
+	location, err := time.LoadLocation("Asia/Ho_Chi_Minh")
+	if err != nil {
+		log.Fatalf("failed to load location: %v", err)
+	}
+	payload.CreatedAt = time.Now().In(location)
+
 	if err := utils.Validate.Struct(payload); err != nil {
 		errors := err.(validator.ValidationErrors)
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload %v", errors))
@@ -270,13 +289,6 @@ func (h *Handler) getDeviceInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// var jsonResponse []types.DeviceDataPayload
-	// if err := json.Unmarshal(responseData, &jsonResponse); err != nil {
-	// 	utils.WriteError(w, http.StatusInternalServerError, err)
-	// 	return
-	// }
-
-	// utils.WriteJSON(w, http.StatusOK, jsonResponse)
 	utils.WriteJSON(w, http.StatusOK, deviceData)
 }
 

@@ -19,6 +19,7 @@ type DeviceStore interface {
 	GetDevicesByUserID(userId int) ([]DeviceDataPayload, error)
 	GetDevicesByFeedID(feedId int) (*DeviceDataPayload, error)
 	GetDevicesInRoomID(id int) ([]DeviceDataPayload, error)
+	DeleteDevice(deviceId string, userId int) error
 }
 
 type SensorStore interface {
@@ -29,8 +30,10 @@ type SensorStore interface {
 
 type LogDeviceStore interface {
 	CreateLog(LogDevice) error
-	GetLogsByUserID(userId int) ([]LogDevice, error)
 	GetLogsByFeedID(feedId int) ([]LogDevice, error)
+	GetLogsByFeedIDBetween(feedId int, start time.Time, end time.Time) ([]LogDevice, error)
+	GetLogsByFeedID7Days(feedId int, end time.Time) ([]LogDevice, error)
+	GetLogsByUserID(userId int) ([]LogDevice, error)
 }
 
 type LogSensorStore interface {
@@ -54,6 +57,25 @@ type OrderStore interface {
 type DoorStore interface {
 	CreatePassword(DoorPassword) error
 	GetPassword(feedId int) (*DoorPassword, error)
+}
+
+type ScheduleStore interface {
+	CreateSchedule(Schedule) error
+	GetAllActiveSchedule() ([]Schedule, error)
+	GetScheduleByFeedId(string) ([]Schedule, error)
+	GetScheduleByID(id int) (Schedule, error)
+	UpdateSchedule(Schedule) error
+}
+
+type Schedule struct {
+	ID            int    `json:"id"`
+	DeviceID      int    `json:"deviceId"`
+	UserID        int    `json:"userId"`
+	Action        string `json:"action"`
+	ScheduledTime string `json:"scheduledTime"` // stored as HH:MM:SS
+	RepeatDays    string `json:"repeatDays"`    //e.g. Mon,Tue
+	Timezone      string `json:"timezone"`
+	IsActive      bool   `json:"isActive"`
 }
 
 type DoorPassword struct {
@@ -87,6 +109,7 @@ type Room struct {
 	ID     int    `json:"id"`
 	Title  string `json:"title"`
 	UserID int    `json:"userID"`
+	Image  string `json:"image"`
 }
 
 type Device struct {
@@ -219,4 +242,14 @@ type SensorDataPayload struct {
 	FeedKey   string    `json:"feed_key"`
 	Value     string    `json:"value"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type UsageRequestPayload struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
+type TimeObject struct {
+	Date  time.Time `json:"date"`
+	Value string    `json:"value"`
 }

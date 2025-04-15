@@ -175,6 +175,15 @@ func (s *Store) GetDevicesInRoomID(roomId int) ([]types.DeviceDataPayload, error
 	return devices, nil
 }
 
+
+func (s *Store) DeleteDevice(deviceId string, userId int) error {
+	query := `
+		DELETE FROM devices
+		WHERE feedId = ? AND userId = ?`
+	_, err := s.db.Exec(query, deviceId, userId)
+	return err	
+}
+
 func scanRowsIntoDeviceDataPayload(rows *sql.Rows) (*types.DeviceDataPayload, error) {
 	device := new(types.DeviceDataPayload)
 

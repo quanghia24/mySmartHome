@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `title` VARCHAR(255) NOT NULL,
     `userId` INT UNSIGNED NOT NULL,
+    `image` TEXT,
     
     PRIMARY KEY(`id`),
     FOREIGN KEY(`userId`) REFERENCES users(`id`) ON DELETE CASCADE
