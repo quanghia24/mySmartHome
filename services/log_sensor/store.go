@@ -2,6 +2,7 @@ package log_sensor
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/quanghia24/mySmartHome/types"
 )
@@ -22,16 +23,22 @@ func (s *Store) CreateLogSensor(log types.LogSensor) error {
 
 }
 
-func (s *Store) GetLogSensorsByFeedID(feedId int) ([]types.LogSensor, error) {
+func (s *Store) GetLogSensorsLast7HoursByFeedID(feedId int, end time.Time) ([]types.LogSensor, error) {
+	start := end.Add(-7 * time.Hour) // 7 hours before the end time
+
 	query := `
-		SELECT * FROM logs_sensor WHERE deviceId = ?
-		ORDER BY logs.createdAt DESC
+		SELECT * 
+		FROM logs_sensor 
+		WHERE sensorId = ?
+		AND createdAt BETWEEN ? AND ?
+		ORDER BY createdAt DESC
 	`
 
-	rows, err := s.db.Query(query, feedId)
+	rows, err := s.db.Query(query, feedId, start, end)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	logs := []types.LogSensor{}
 
@@ -40,9 +47,9 @@ func (s *Store) GetLogSensorsByFeedID(feedId int) ([]types.LogSensor, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		logs = append(logs, *l)
 	}
+
 	return logs, nil
 }
 
@@ -68,6 +75,8 @@ func (s *Store) GetLogSensorsByUserID(userId int) ([]types.LogSensor, error) {
 	}
 	return logs, nil
 }
+
+
 
 func scanRowIntoLog(rows *sql.Rows) (*types.LogSensor, error) {
 	log := new(types.LogSensor)

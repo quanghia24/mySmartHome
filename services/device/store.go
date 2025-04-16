@@ -19,6 +19,7 @@ func NewStore(db *sql.DB) *Store {
 
 func (s *Store) CreateDevice(device types.Device) error {
 	_, err := s.db.Exec("INSERT INTO devices (feedId, feedKey, title, type, userID, roomID) VALUES (?, ?, ?, ?, ?, ?)", device.FeedId, device.FeedKey, device.Title, device.Type, device.UserID, device.RoomID)
+	
 	return err
 }
 

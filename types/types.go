@@ -39,7 +39,7 @@ type LogDeviceStore interface {
 type LogSensorStore interface {
 	CreateLogSensor(LogSensor) error
 	GetLogSensorsByUserID(userId int) ([]LogSensor, error)
-	GetLogSensorsByFeedID(feedId int) ([]LogSensor, error)
+	GetLogSensorsLast7HoursByFeedID(feedId int, end time.Time) ([]LogSensor, error)
 }
 
 type ProductStore interface {

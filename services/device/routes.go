@@ -370,7 +370,7 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("repeated feedId"))
 		return
 	}
 

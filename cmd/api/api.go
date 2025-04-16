@@ -74,6 +74,8 @@ func (s *APIServer) Run() error {
 	deviceHandler.RegisterRoutes(subrouter)
 
 	logSensorStore := log_sensor.NewStore(s.db)
+	logSensorHandler := log_sensor.NewHandler(logSensorStore)
+	logSensorHandler.RegisterRoutes(subrouter)
 
 	sensorStore := sensor.NewStore(s.db)
 	sensorHandler := sensor.NewHandler(sensorStore, userStore, logSensorStore)

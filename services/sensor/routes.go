@@ -86,6 +86,7 @@ func (h *Handler) StartSensorDataPolling() {
 	defer ticker.Stop()
 
 	for range ticker.C {
+		fmt.Println("retrieve sensor data")
 		sensors, err := h.store.GetAllSensor()
 		if err != nil {
 			fmt.Printf("error retrieving sensors: %v\n", err)
