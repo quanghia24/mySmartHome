@@ -13,6 +13,7 @@ import (
 	"github.com/quanghia24/mySmartHome/services/log_device"
 	"github.com/quanghia24/mySmartHome/services/log_sensor"
 	"github.com/quanghia24/mySmartHome/services/order"
+	"github.com/quanghia24/mySmartHome/services/plan"
 	"github.com/quanghia24/mySmartHome/services/product"
 	"github.com/quanghia24/mySmartHome/services/room"
 	"github.com/quanghia24/mySmartHome/services/schedule"
@@ -86,6 +87,9 @@ func (s *APIServer) Run() error {
 	scheduleStore := schedule.NewStore(s.db)
 	scheduleHandler := schedule.NewHandler(scheduleStore, deviceStore, logDeviceStore, doorStore, userStore)
 	scheduleHandler.RegisterRoutes(subrouter)
+
+	planHandler := plan.NewHandler()
+	planHandler.RegisterRoutes(subrouter)
 
 	scheduleHandler.StartSchedule()
 
