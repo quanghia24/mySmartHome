@@ -24,7 +24,7 @@ func NewClient() MQTT.Client {
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(broker)
 	opts.SetUsername(username)
-	opts.SetPassword("aio_somY90gmOI1pIeD8KpeTb1uLlSeE")
+	opts.SetPassword(os.Getenv("AIOKey"))
 	opts.SetClientID("go-client-12345")
 
 	opts.AutoReconnect = true
