@@ -90,3 +90,13 @@ func scanRowsIntoRoom(rows *sql.Rows) (*types.RoomInfoPayload, error) {
 	}
 	return room, nil
 }
+
+
+func (s *Store) UpdateRoom(room types.Room) error {
+	_, err := s.db.Exec(`
+		UPDATE rooms
+		SET title = ?, image = ?
+		WHERE id = ?
+	`, room.Title, room.Image, room.ID)
+	return err
+}

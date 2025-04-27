@@ -81,3 +81,7 @@ func (m *mockUserStore) GetUserByID(id int) (*types.User, error) {
 func (m *mockUserStore) CreateUser(user types.User) error {
 	return nil
 }
+
+func (m *mockUserStore) UpdateProfile(user types.User) error {
+	return nil
+}

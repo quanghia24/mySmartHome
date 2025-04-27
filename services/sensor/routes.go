@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -15,19 +16,25 @@ import (
 	"github.com/quanghia24/mySmartHome/services/auth"
 	"github.com/quanghia24/mySmartHome/types"
 	"github.com/quanghia24/mySmartHome/utils"
+
+	MQTT "github.com/eclipse/paho.mqtt.golang"
 )
 
 type Handler struct {
 	store          types.SensorStore
 	userStore      types.UserStore
 	logSensorStore types.LogSensorStore
+	planStore      types.PlanStore
+	mqttClient     MQTT.Client
 }
 
-func NewHandler(store types.SensorStore, userStore types.UserStore, logSensorStore types.LogSensorStore) *Handler {
+func NewHandler(store types.SensorStore, userStore types.UserStore, logSensorStore types.LogSensorStore, planStore types.PlanStore, mqttClient MQTT.Client) *Handler {
 	return &Handler{
 		store:          store,
 		userStore:      userStore,
 		logSensorStore: logSensorStore,
+		planStore:      planStore,
+		mqttClient:     mqttClient,
 	}
 }
 
@@ -77,12 +84,74 @@ func (h *Handler) createSensor(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, err)
 		return
 	}
+	
+
+	// mqtt
+	topic := fmt.Sprintf("%s/feeds/%s", os.Getenv("AIOUSER"), payload.FeedKey)
+	fmt.Println(topic)
+
+	if token := h.mqttClient.Subscribe(topic, 0, func(client MQTT.Client, msg MQTT.Message) {
+		fmt.Printf("New message on %s: %s\n", msg.Topic(), msg.Payload())
+		// check for plan
+
+		f, _ := strconv.ParseFloat(string(msg.Payload()), 32)
+
+		// Round to 1 decimal place
+		value := math.Round(f*10) / 10
+
+		// check for plan -> threshold
+		// fmt.Println("Check threshold for", payload.FeedID, "with value of", value)
+		plan, _ := h.planStore.GetPlansByFeedID(payload.FeedID)
+		// if err != nil {
+		// 	fmt.Println("Failed to get plans:", err)
+		// }
+		if plan != nil {
+			fmt.Println(*plan)
+			if plan.Lower != "" {
+				lower, _ := strconv.ParseFloat(plan.Lower, 32)
+				if lower > value {
+					fmt.Println("WARNING!!! lower")
+					err = h.logSensorStore.CreateLogSensor(types.LogSensor{
+						Type:     "warning",
+						Message:  fmt.Sprintf("%f below the %f lower bound", value, lower),
+						SensorID: payload.FeedID,
+						UserID:   userId,
+						Value:    string(msg.Payload()),
+					})
+
+					if err != nil {
+						log.Println("sensor log create:", err)
+					}
+				}
+			}
+			if plan.Upper != "" {
+				upper, _ := strconv.ParseFloat(plan.Upper, 32)
+				if upper < value {
+					fmt.Println("WARNING!!! upper")
+					err = h.logSensorStore.CreateLogSensor(types.LogSensor{
+						Type:     "warning",
+						Message:  fmt.Sprintf("%f exceed the %f upper bound", value, upper),
+						SensorID: payload.FeedID,
+						UserID:   userId,
+						Value:    string(msg.Payload()),
+					})
+
+					if err != nil {
+						log.Println("sensor log create:", err)
+					}
+				}
+			}
+		}
+
+	}); token.Wait() && token.Error() != nil {
+		fmt.Println("Failed to subscribe:", token.Error())
+	}
 
 	utils.WriteJSON(w, http.StatusCreated, nil)
 }
 
 func (h *Handler) StartSensorDataPolling() {
-	ticker := time.NewTicker(15*60 * time.Second)
+	ticker := time.NewTicker(15 * 60 * time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -121,7 +190,6 @@ func (h *Handler) updateSensorData(sensor types.Sensor) {
 		log.Println("Error parsing JSON:", err)
 		return
 	}
-
 
 	err = h.logSensorStore.CreateLogSensor(types.LogSensor{
 		Type:     "data",

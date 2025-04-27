@@ -131,7 +131,7 @@ func (h *Handler) StartSchedule() {
 }
 
 func (h *Handler) checkAndRunSchedules() {
-	fmt.Println("checking schedule")
+	// fmt.Println("checking schedule")
 	schedules, err := h.store.GetAllActiveSchedule()
 	if err != nil {
 		fmt.Printf("error at checking schedule: %v\n", err)

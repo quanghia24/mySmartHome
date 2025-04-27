@@ -43,6 +43,10 @@ func (m *mockRoomStore) CreateRoom(room types.Room) error {
 	return nil
 }
 
+func (m *mockRoomStore) UpdateRoom(room types.Room) error {
+	return nil
+}
+
 func (m *mockRoomStore) DeleteRoom(roomId int, userId int) error {
 	return nil
 }
@@ -57,5 +61,9 @@ func (m *mockUserStore) GetUserByID(id int) (*types.User, error) {
 	return nil, nil
 }
 func (m *mockUserStore) CreateUser(user types.User) error {
+	return nil
+}
+
+func (m *mockUserStore) UpdateProfile(user types.User) error {
 	return nil
 }

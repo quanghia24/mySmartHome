@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `lastName` VARCHAR(255) NOT NULL,
     `email` VARCHAR(255) NOT NULL,
     `password` VARCHAR(255) NOT NULL,
+    `avatar` VARCHAR(255) DEFAULT '',
     `createdAt` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (`id`),

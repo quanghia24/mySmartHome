@@ -29,6 +29,37 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/rooms", auth.WithJWTAuth(h.getAllRoom, h.userStore)).Methods(http.MethodGet)
 	router.HandleFunc("/rooms", auth.WithJWTAuth(h.createRoom, h.userStore)).Methods(http.MethodPost)
 	router.HandleFunc("/rooms/{roomId}", auth.WithJWTAuth(h.deleteRoom, h.userStore)).Methods(http.MethodDelete)
+	router.HandleFunc("/rooms/{roomId}", auth.WithJWTAuth(h.updateRoom, h.userStore)).Methods(http.MethodPut)
+}
+
+func (h *Handler) updateRoom(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	roomId, _ := strconv.Atoi(params["roomId"])
+	userId := auth.GetUserIDFromContext(r.Context())
+
+
+	var payload struct {
+		Title string `json:"title"`
+		Image string `json:"image"`
+	}
+
+	if err := utils.ParseJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+	err := h.store.UpdateRoom(types.Room{
+		ID: roomId,
+		Title: payload.Title,
+		UserID: userId,
+		Image: payload.Image,
+
+	})
+    if err != nil {
+        utils.WriteError(w, http.StatusInternalServerError, err)
+        return
+    }
+
+    utils.WriteJSON(w, http.StatusOK, map[string]string{"message": "room updated"})
 }
 
 func (h *Handler) deleteRoom(w http.ResponseWriter, r *http.Request) {

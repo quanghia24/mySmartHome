@@ -5,17 +5,20 @@ import "time"
 type UserStore interface {
 	GetUserByEmail(email string) (*User, error)
 	GetUserByID(id int) (*User, error)
+	UpdateProfile(User) error
 	CreateUser(User) error
 }
 
 type RoomStore interface {
 	CreateRoom(Room) error
 	GetRoomsByUserID(userId int) ([]RoomInfoPayload, error)
+	UpdateRoom(Room) error
 	DeleteRoom(roomId int, userId int) error
 }
 
 type DeviceStore interface {
 	CreateDevice(Device) error
+	GetAllDevices() ([]AllDeviceDataPayload, error)
 	GetDevicesByUserID(userId int) ([]DeviceDataPayload, error)
 	GetDevicesByFeedID(feedId int) (*DeviceDataPayload, error)
 	GetDevicesInRoomID(id int) ([]DeviceDataPayload, error)
@@ -65,6 +68,20 @@ type ScheduleStore interface {
 	GetScheduleByFeedId(string) ([]Schedule, error)
 	GetScheduleByID(id int) (Schedule, error)
 	UpdateSchedule(Schedule) error
+}
+
+type PlanStore interface {
+	CreatePlan(Plan) error
+	RemovePlan(int) error
+	GetPlansByFeedID(int) (*Plan, error)
+}
+
+type Plan struct {
+	ID        int       `json:"id"`
+	SensorID  int       `json:"sensorId"`
+	Lower     string    `json:"lower"`
+	Upper     string    `json:"upper"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type Schedule struct {
@@ -172,6 +189,7 @@ type User struct {
 	LastName  string    `json:"lastName"`
 	Email     string    `json:"email"`
 	Password  string    `json:"-"`
+	Avatar    string    `json:"avatar"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -213,6 +231,16 @@ type DeviceDataPayload struct {
 	Value     string    `json:"value" validate:"required"`
 	Type      string    `json:"type"`
 	Title     string    `json:"title"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type AllDeviceDataPayload struct {
+	FeedID    int       `json:"feedId"`
+	FeedKey   string    `json:"feedKey"`
+	Value     string    `json:"value" validate:"required"`
+	Type      string    `json:"type"`
+	Title     string    `json:"title"`
+	UserID    int       `json:"userId"`
 	CreatedAt time.Time `json:"created_at"`
 }
 

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/quanghia24/mySmartHome/services/auth"
@@ -18,20 +19,22 @@ import (
 )
 
 type Handler struct {
-	store     types.DeviceStore
-	userStore types.UserStore
-	roomStore types.RoomStore
-	logStore  types.LogDeviceStore
-	doorStore types.DoorStore
+	store      types.DeviceStore
+	userStore  types.UserStore
+	roomStore  types.RoomStore
+	logStore   types.LogDeviceStore
+	doorStore  types.DoorStore
+	mqttClient MQTT.Client
 }
 
-func NewHandler(store types.DeviceStore, userStore types.UserStore, roomStore types.RoomStore, logStore types.LogDeviceStore, doorStore types.DoorStore) *Handler {
+func NewHandler(store types.DeviceStore, userStore types.UserStore, roomStore types.RoomStore, logStore types.LogDeviceStore, doorStore types.DoorStore, mqttClient MQTT.Client) *Handler {
 	return &Handler{
-		store:     store,
-		userStore: userStore,
-		roomStore: roomStore,
-		logStore:  logStore,
-		doorStore: doorStore,
+		store:      store,
+		userStore:  userStore,
+		roomStore:  roomStore,
+		logStore:   logStore,
+		doorStore:  doorStore,
+		mqttClient: mqttClient,
 	}
 }
 
@@ -61,7 +64,7 @@ func (h *Handler) deleteDevice(w http.ResponseWriter, r *http.Request) {
 	err := h.store.DeleteDevice(deviceId, userId)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
-		return 
+		return
 	}
 
 	utils.WriteJSON(w, http.StatusOK, fmt.Sprintf("Device %v has been deleted", deviceId))
@@ -160,7 +163,7 @@ func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 	url := os.Getenv("AIOAPI") + device.FeedKey + "/data"
 	log.Println("adding data to", url)
 
-	userId := auth.GetUserIDFromContext(r.Context())
+	// userId := auth.GetUserIDFromContext(r.Context())
 
 	var payload types.DeviceDataPayload
 	if err := utils.ParseJSON(r, &payload); err != nil {
@@ -233,31 +236,31 @@ func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 
 	device.Value = payload.Value
 
-	msg := ""
-	switch device.Type {
-	case "door":
-		if device.Value == "0" {
-			msg = fmt.Sprintf("[%s] got closed", device.Title)
-		} else {
-			msg = fmt.Sprintf("[%s] got opened", device.Title)
-		}
-	case "fan":
-		msg = fmt.Sprintf("[%s]'s set at level: %s", device.Title, device.Value)
-	case "light":
-		msg = fmt.Sprintf("[%s]'s set color: %s", device.Title, device.Value)
-	}
+	// msg := ""
+	// switch device.Type {
+	// case "door":
+	// 	if device.Value == "0" {
+	// 		msg = fmt.Sprintf("[%s] got closed", device.Title)
+	// 	} else {
+	// 		msg = fmt.Sprintf("[%s] got opened", device.Title)
+	// 	}
+	// case "fan":
+	// 	msg = fmt.Sprintf("[%s]'s set at level: %s", device.Title, device.Value)
+	// case "light":
+	// 	msg = fmt.Sprintf("[%s]'s set color: %s", device.Title, device.Value)
+	// }
 
-	err = h.logStore.CreateLog(types.LogDevice{
-		Type:     "onoff",
-		Message:  msg,
-		DeviceID: feedId,
-		UserID:   userId,
-		Value:    device.Value,
-	})
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log creation:%v", err))
-		return
-	}
+	// err = h.logStore.CreateLog(types.LogDevice{
+	// 	Type:     "onoff",
+	// 	Message:  msg,
+	// 	DeviceID: feedId,
+	// 	UserID:   userId,
+	// 	Value:    device.Value,
+	// })
+	// if err != nil {
+	// 	utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log creation:%v", err))
+	// 	return
+	// }
 
 	utils.WriteJSON(w, http.StatusOK, device)
 }
@@ -348,6 +351,7 @@ func (h *Handler) getAllDeviceInRoom(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 	userId := auth.GetUserIDFromContext(r.Context())
+
 	var payload types.CreateDevicePayload
 	if err := utils.ParseJSON(r, &payload); err != nil {
 		utils.WriteError(w, http.StatusBadRequest, err)
@@ -370,7 +374,7 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("repeated feedId"))
+		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -386,12 +390,11 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 		UserID:   userId,
 		Value:    value,
 	})
-
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log creation error:%v", err))
 		return
 	}
-
+	
 	if payload.Type == "door" {
 		err := h.doorStore.CreatePassword(types.DoorPassword{
 			FeedID: payload.FeedID,
@@ -401,6 +404,45 @@ func (h *Handler) createDevice(w http.ResponseWriter, r *http.Request) {
 			utils.WriteError(w, http.StatusInternalServerError, err)
 			return
 		}
+	}
+
+	// mqtt
+	topic := fmt.Sprintf("%s/feeds/%s", os.Getenv("AIOUSER"), payload.FeedKey)
+	fmt.Println(topic)
+
+	if token := h.mqttClient.Subscribe(topic, 0, func(client MQTT.Client, msg MQTT.Message) {
+		fmt.Printf("New message on %s: %s\n", msg.Topic(), msg.Payload())
+
+		// You can extract device ID by looking up payload.FeedKey or topic
+		message := ""
+		value := string(msg.Payload())
+		switch payload.Type {
+		case "door":
+			if value == "0" {
+				message = fmt.Sprintf("[%s] got closed", payload.Title)
+			} else {
+				message = fmt.Sprintf("[%s] got opened", payload.Title)
+			}
+		case "fan":
+			message = fmt.Sprintf("[%s]'s set at level: %s", payload.Title, value)
+		case "light":
+			message = fmt.Sprintf("[%s]'s set color: %s", payload.Title, value)
+		}
+
+		err = h.logStore.CreateLog(types.LogDevice{
+			Type:     "onoff",
+			Message:  message,
+			DeviceID: payload.FeedID,
+			UserID:   userId,
+			Value:    value,
+		})
+		if err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log creation:%v", err))
+			return
+		}
+	}); token.Wait() && token.Error() != nil {
+		utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("mqtt subscribe error: %v", token.Error()))
+		return
 	}
 
 	utils.WriteJSON(w, http.StatusCreated, nil)

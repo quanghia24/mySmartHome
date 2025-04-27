@@ -23,6 +23,40 @@ func (s *Store) CreateDevice(device types.Device) error {
 	return err
 }
 
+func (s *Store) GetAllDevices() ([]types.AllDeviceDataPayload, error) {
+	dquery := `
+		SELECT d.feedId, d.feedKey, l.value, d.type, d.title, d.userId, l.createdAt
+		FROM devices d
+		LEFT JOIN logs l 
+			ON d.feedId = l.deviceId
+			AND l.createdAt = (
+				SELECT MAX(l2.createdAt)
+				FROM logs l2
+				WHERE l2.deviceId = d.feedId
+			)
+	`
+
+	drows, err := s.db.Query(dquery)
+	if err != nil {
+		return nil, err
+	}
+
+	
+	devices := []types.AllDeviceDataPayload{}
+
+
+	for drows.Next() {
+		d, err := scanRowsIntoAllDeviceDataPayload(drows)
+		if err != nil {
+			return nil, err
+		}
+
+		devices = append(devices, *d)
+	}
+
+	return devices, nil
+}
+
 func (s *Store) GetDevicesByUserID(userId int) ([]types.DeviceDataPayload, error) {
 	dquery := `
 		SELECT d.feedId, d.feedKey, l.value, d.type, d.title, l.createdAt
@@ -176,7 +210,6 @@ func (s *Store) GetDevicesInRoomID(roomId int) ([]types.DeviceDataPayload, error
 	return devices, nil
 }
 
-
 func (s *Store) DeleteDevice(deviceId string, userId int) error {
 	query := `
 		DELETE FROM devices
@@ -202,3 +235,23 @@ func scanRowsIntoDeviceDataPayload(rows *sql.Rows) (*types.DeviceDataPayload, er
 
 	return device, nil
 }
+
+func scanRowsIntoAllDeviceDataPayload(rows *sql.Rows) (*types.AllDeviceDataPayload, error) {
+	device := new(types.AllDeviceDataPayload)
+
+	err := rows.Scan(
+		&device.FeedID,
+		&device.FeedKey,
+		&device.Value,
+		&device.Type,
+		&device.Title,
+		&device.UserID,
+		&device.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return device, nil
+}
+

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/quanghia24/mySmartHome/cmd/mqtt"
 	"github.com/quanghia24/mySmartHome/services/cart"
 	"github.com/quanghia24/mySmartHome/services/device"
 	"github.com/quanghia24/mySmartHome/services/doorpwd"
@@ -45,6 +46,8 @@ func (s *APIServer) Run() error {
 		})
 	})
 
+	mqttClient := mqtt.NewClient()
+
 	subrouter := router.PathPrefix("/api/v1").Subrouter()
 
 	userStore := user.NewStore(s.db)
@@ -71,15 +74,19 @@ func (s *APIServer) Run() error {
 	doorStore := doorpwd.NewStore(s.db)
 
 	deviceStore := device.NewStore(s.db)
-	deviceHandler := device.NewHandler(deviceStore, userStore, roomStore, logDeviceStore, doorStore)
+	deviceHandler := device.NewHandler(deviceStore, userStore, roomStore, logDeviceStore, doorStore, mqttClient)
 	deviceHandler.RegisterRoutes(subrouter)
 
 	logSensorStore := log_sensor.NewStore(s.db)
 	logSensorHandler := log_sensor.NewHandler(logSensorStore)
 	logSensorHandler.RegisterRoutes(subrouter)
 
+	planStore := plan.NewStore(s.db)
+	planHandler := plan.NewHandler(planStore)
+	planHandler.RegisterRoutes(subrouter)
+
 	sensorStore := sensor.NewStore(s.db)
-	sensorHandler := sensor.NewHandler(sensorStore, userStore, logSensorStore)
+	sensorHandler := sensor.NewHandler(sensorStore, userStore, logSensorStore, planStore, mqttClient)
 	sensorHandler.RegisterRoutes(subrouter)
 
 	go sensorHandler.StartSensorDataPolling()
@@ -88,10 +95,13 @@ func (s *APIServer) Run() error {
 	scheduleHandler := schedule.NewHandler(scheduleStore, deviceStore, logDeviceStore, doorStore, userStore)
 	scheduleHandler.RegisterRoutes(subrouter)
 
-	planHandler := plan.NewHandler()
-	planHandler.RegisterRoutes(subrouter)
+	
 
 	scheduleHandler.StartSchedule()
+
+	mqtt.ResubscribeDevices(deviceStore, mqttClient, logDeviceStore)
+	mqtt.ResubscribeSensors(sensorStore, mqttClient, planStore, logSensorStore)
+	fmt.Println("Reconnected to mqtt")	
 
 	fmt.Println("Listening on port", s.addr)
 

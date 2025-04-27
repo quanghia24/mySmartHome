@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS `plans`(
     `id` INT UNSIGNED AUTO_INCREMENT,
-    `deviceId` INT UNSIGNED NOT NULL,
-    `lower` VARCHAR(255) NOT NULL,
-    `upper` VARCHAR(255) NOT NULL,
+    `sensorId` INT UNSIGNED NOT NULL,
+    `lower` VARCHAR(255),
+    `upper` VARCHAR(255),
     `createdAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY(`id`),
-    FOREIGN KEY (`deviceId`) REFERENCES devices(`feedId`) ON DELETE CASCADE
+    FOREIGN KEY (`sensorId`) REFERENCES sensors(`feedId`) ON DELETE CASCADE
 );

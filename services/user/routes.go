@@ -27,7 +27,26 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/login", h.handleLogin).Methods("POST")
 	router.HandleFunc("/register", h.handleRegister).Methods("POST")
 	router.HandleFunc("/profile", auth.WithJWTAuth(h.handleGetProfile, h.store)).Methods("GET")
+	router.HandleFunc("/profile", auth.WithJWTAuth(h.handleUpdateProfile, h.store)).Methods("PUT")
 	router.HandleFunc("/logout", h.handleLogout).Methods("DELETE")
+}
+
+func (h *Handler) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	var payload types.User
+	userId := auth.GetUserIDFromContext(r.Context())
+
+	if err := utils.ParseJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return
+	}
+	payload.ID = userId
+
+	err := h.store.UpdateProfile(payload)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, "updated user profile")
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +65,7 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	// check exist
 	u, err := h.store.GetUserByEmail(payload.Email)
 	if err != nil { //user not exists
-		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("email or password was incorrect"))
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("email or password was incorrect: %s", err))
 		return
 	}
 
@@ -120,6 +139,7 @@ func (h *Handler) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user doesn't exist in database"))
 		return
 	}
+	fmt.Println(profile)
 
 	utils.WriteJSON(w, http.StatusOK, profile)
 }
