@@ -6,15 +6,16 @@ import (
 	"os"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 	"github.com/quanghia24/mySmartHome/cmd/api"
 	"github.com/quanghia24/mySmartHome/db"
 )
 
 func main() {
-	// err := godotenv.Load()
-	// if err != nil {
-	// 	log.Fatal("error loading .env file in main")
-	// }
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("error loading .env file in main")
+	}
 
 	db, err := db.NewMySQLStorage(mysql.Config{
 		User:                 os.Getenv("DB_USER"),
@@ -33,8 +34,6 @@ func main() {
 	initStorage(db)
 
 	// mqtt
-	// mqttServer := mqtt.NewMQTTServer()
-	// go mqttServer.Run()
 
 	// api server
 	server := api.NewAPIServer(":8000", db)

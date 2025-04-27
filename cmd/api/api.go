@@ -100,7 +100,7 @@ func (s *APIServer) Run() error {
 	scheduleHandler.StartSchedule()
 
 	mqtt.ResubscribeDevices(deviceStore, mqttClient, logDeviceStore)
-	mqtt.ResubscribeSensors(sensorStore, mqttClient, planStore, logSensorStore)
+	mqtt.ResubscribeSensors(sensorStore, deviceStore, mqttClient, planStore, logSensorStore)
 	fmt.Println("Reconnected to mqtt")	
 
 	fmt.Println("Listening on port", s.addr)

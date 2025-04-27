@@ -8,14 +8,15 @@ import (
 	"strconv"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
+	"github.com/joho/godotenv"
 	"github.com/quanghia24/mySmartHome/types"
 )
 
 func NewClient() MQTT.Client {
-	// err := godotenv.Load()
-	// if err != nil {
-	// 	log.Fatal("error loading .env file in mqtt")
-	// }
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("error loading .env file in mqtt")
+	}
 	username := os.Getenv("AIOUSER")
 	// MQTT broker URL for Adafruit IO
 	broker := os.Getenv("BROKER")
@@ -48,10 +49,10 @@ func NewClient() MQTT.Client {
 }
 
 func ResubscribeDevices(store types.DeviceStore, mqttClient MQTT.Client, logStore types.LogDeviceStore) error {
-	// err := godotenv.Load()
-	// if err != nil {
-	// 	log.Fatal("error loading .env file in mqtt")
-	// }
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("error loading .env file in mqtt")
+	}
 	username := os.Getenv("AIOUSER")
 
 	devices, err := store.GetAllDevices()
@@ -101,11 +102,11 @@ func ResubscribeDevices(store types.DeviceStore, mqttClient MQTT.Client, logStor
 	return nil
 }
 
-func ResubscribeSensors(store types.SensorStore, mqttClient MQTT.Client, planStore types.PlanStore, logStore types.LogSensorStore) error {
-	// err := godotenv.Load()
-	// if err != nil {
-	// 	log.Fatal("error loading .env file in mqtt")
-	// }
+func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, mqttClient MQTT.Client, planStore types.PlanStore, logStore types.LogSensorStore) error {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("error loading .env file in mqtt")
+	}
 	username := os.Getenv("AIOUSER")
 
 	sensors, err := store.GetAllSensor()
@@ -147,6 +148,28 @@ func ResubscribeSensors(store types.SensorStore, mqttClient MQTT.Client, planSto
 						if err != nil {
 							log.Println("sensor log create:", err)
 						}
+
+						// check type
+						mysensor, err := store.GetSensorByFeedID(d.FeedId)
+						if err != nil {
+							log.Println("error get sensor by id:", err)
+						}
+
+						if mysensor.Type == "brightness" {
+							//
+							fmt.Println("turn on all light")
+							devices, _ := deviceStore.GetDevicesInRoomID(d.RoomID)
+							for _, device := range devices {
+								if device.Type == "light" && device.Value != "#000000" {
+									// controlDevices(device)
+									fmt.Println("bat den", device.FeedKey)
+								}
+							}
+
+						}
+
+						// if
+
 					}
 				}
 				if plan.Upper != "" {
@@ -177,3 +200,52 @@ func ResubscribeSensors(store types.SensorStore, mqttClient MQTT.Client, planSto
 
 	return nil
 }
+
+// func controlDevices(device types.DeviceDataPayload) {
+// 	url := os.Getenv("AIOAPI") + device.FeedKey + "/data"
+// 	log.Println("adding data to", url)
+
+// 	if device.Type == "fan" {
+// 		device.Value = "75"
+// 	} else if device.Type == "light" {
+// 		device.Value = "#FFFFFF"
+// 	} else {
+// 		device.Value = "0"
+// 	}
+
+// 	location, err := time.LoadLocation("Asia/Ho_Chi_Minh")
+// 	if err != nil {
+// 		log.Fatalf("failed to load location: %v", err)
+// 	}
+
+// 	device.CreatedAt = time.Now().In(location)
+
+// 	// send request to adafruit server
+// 	jsonData, err := json.Marshal(device)
+// 	if err != nil {
+// 		log.Fatalf("failed to marshal: %v", err)
+// 		return
+// 	}
+
+// 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
+// 	if err != nil {
+// 		log.Fatalf("failed to send request: %v", err)
+// 		return
+// 	}
+
+// 	apiKey := os.Getenv("AIOKey")
+// 	if apiKey == "" {
+// 		fmt.Errorf("missing AIO Key")
+// 		return
+// 	}
+
+// 	req.Header.Set("Content-Type", "application/json")
+// 	req.Header.Set("X-AIO-Key", apiKey)
+
+// 	// make the request
+// 	client := &http.Client{}
+// 	_, err = client.Do(req)
+// 	if err != nil {
+// 		return
+// 	}
+// }
