@@ -19,6 +19,7 @@ import (
 	"github.com/quanghia24/mySmartHome/services/room"
 	"github.com/quanghia24/mySmartHome/services/schedule"
 	"github.com/quanghia24/mySmartHome/services/sensor"
+	"github.com/quanghia24/mySmartHome/services/statistic"
 	"github.com/quanghia24/mySmartHome/services/user"
 )
 
@@ -95,13 +96,14 @@ func (s *APIServer) Run() error {
 	scheduleHandler := schedule.NewHandler(scheduleStore, deviceStore, logDeviceStore, doorStore, userStore)
 	scheduleHandler.RegisterRoutes(subrouter)
 
-	
+	statisticHandler := statistic.NewHandler(logDeviceStore, logSensorStore, userStore, roomStore, deviceStore)
+	statisticHandler.RegisterRoutes(subrouter)
 
 	scheduleHandler.StartSchedule()
 
 	mqtt.ResubscribeDevices(deviceStore, mqttClient, logDeviceStore)
 	mqtt.ResubscribeSensors(sensorStore, deviceStore, mqttClient, planStore, logSensorStore)
-	fmt.Println("Reconnected to mqtt")	
+	fmt.Println("Reconnected to mqtt")
 
 	fmt.Println("Listening on port", s.addr)
 

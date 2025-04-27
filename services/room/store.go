@@ -71,6 +71,35 @@ func (s *Store) GetRoomsByUserID(userId int) ([]types.RoomInfoPayload, error) {
 	return rooms, nil
 }
 
+func (s *Store) GetDevicesByRoomId(roomId int) ([]int, error) {
+	query := `
+		SELECT feedId 
+		FROM devices
+		WHERE roomId = ?	
+	`
+	rows, err := s.db.Query(query, roomId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var feedIds []int
+
+	for rows.Next() {
+		var feedId int
+		if err := rows.Scan(&feedId); err != nil {
+			return nil, err
+		}
+		feedIds = append(feedIds, feedId)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return feedIds, nil
+}
+
 func scanRowsIntoRoom(rows *sql.Rows) (*types.RoomInfoPayload, error) {
 	room := new(types.RoomInfoPayload)
 

@@ -1,11 +1,15 @@
 package mqtt
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/joho/godotenv"
@@ -25,7 +29,7 @@ func NewClient() MQTT.Client {
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(broker)
 	opts.SetUsername(username)
-	opts.SetPassword("aio_somY90gmOI1pIeD8KpeTb1uLlSeE")
+	opts.SetPassword("aio_nFqo15Dff0f1V5ZtDJwPLf8S9ZAG")
 	opts.SetClientID("go-client-12345")
 
 	opts.AutoReconnect = true
@@ -99,6 +103,7 @@ func ResubscribeDevices(store types.DeviceStore, mqttClient MQTT.Client, logStor
 		}
 	}
 
+	fmt.Println("done with device connections")
 	return nil
 }
 
@@ -155,21 +160,19 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 							log.Println("error get sensor by id:", err)
 						}
 
+						fmt.Println(mysensor)
 						if mysensor.Type == "brightness" {
-							//
-							fmt.Println("turn on all light")
-							devices, _ := deviceStore.GetDevicesInRoomID(d.RoomID)
-							for _, device := range devices {
-								if device.Type == "light" && device.Value != "#000000" {
-									// controlDevices(device)
-									fmt.Println("bat den", device.FeedKey)
-								}
+							devices, err := deviceStore.GetDevicesInRoomID(d.RoomID)
+							if err != nil {
+								fmt.Println("error when get all devices in room:", err)
 							}
 
+							for _, device := range devices {
+								if device.Type == "light" && device.Value == "#000000" {
+									controlDevices(device)
+								}
+							}
 						}
-
-						// if
-
 					}
 				}
 				if plan.Upper != "" {
@@ -187,6 +190,25 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 						if err != nil {
 							log.Println("sensor log create:", err)
 						}
+
+						// check type
+						mysensor, err := store.GetSensorByFeedID(d.FeedId)
+						if err != nil {
+							log.Println("error get sensor by id:", err)
+						}
+
+						if mysensor.Type == "temperature" {
+							devices, err := deviceStore.GetDevicesInRoomID(d.RoomID)
+							if err != nil {
+								fmt.Println("error when get all devices in room:", err)
+							}
+
+							for _, device := range devices {
+								if device.Type == "fan" && device.Value == "0" {
+									controlDevices(device)
+								}
+							}
+						}
 					}
 				}
 			}
@@ -196,56 +218,57 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 		if token.Wait() && token.Error() != nil {
 			fmt.Println("Failed to subscribe:", token.Error())
 		}
-	}
 
+	}
+	fmt.Println("done with sensor connections")
 	return nil
 }
 
-// func controlDevices(device types.DeviceDataPayload) {
-// 	url := os.Getenv("AIOAPI") + device.FeedKey + "/data"
-// 	log.Println("adding data to", url)
+func controlDevices(device types.DeviceDataPayload) {
+	url := os.Getenv("AIOAPI") + device.FeedKey + "/data"
+	log.Println("adding data to", url)
 
-// 	if device.Type == "fan" {
-// 		device.Value = "75"
-// 	} else if device.Type == "light" {
-// 		device.Value = "#FFFFFF"
-// 	} else {
-// 		device.Value = "0"
-// 	}
+	if device.Type == "fan" {
+		device.Value = "75"
+	} else if device.Type == "light" {
+		device.Value = "#FFFFFF"
+	} else {
+		device.Value = "0"
+	}
 
-// 	location, err := time.LoadLocation("Asia/Ho_Chi_Minh")
-// 	if err != nil {
-// 		log.Fatalf("failed to load location: %v", err)
-// 	}
+	location, err := time.LoadLocation("Asia/Ho_Chi_Minh")
+	if err != nil {
+		log.Fatalf("failed to load location: %v", err)
+	}
 
-// 	device.CreatedAt = time.Now().In(location)
+	device.CreatedAt = time.Now().In(location)
 
-// 	// send request to adafruit server
-// 	jsonData, err := json.Marshal(device)
-// 	if err != nil {
-// 		log.Fatalf("failed to marshal: %v", err)
-// 		return
-// 	}
+	// send request to adafruit server
+	jsonData, err := json.Marshal(device)
+	if err != nil {
+		log.Fatalf("failed to marshal: %v", err)
+		return
+	}
 
-// 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
-// 	if err != nil {
-// 		log.Fatalf("failed to send request: %v", err)
-// 		return
-// 	}
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Fatalf("failed to send request: %v", err)
+		return
+	}
 
-// 	apiKey := os.Getenv("AIOKey")
-// 	if apiKey == "" {
-// 		fmt.Errorf("missing AIO Key")
-// 		return
-// 	}
+	apiKey := os.Getenv("AIOKey")
+	if apiKey == "" {
+		fmt.Println("missing AIO Key")
+		return
+	}
 
-// 	req.Header.Set("Content-Type", "application/json")
-// 	req.Header.Set("X-AIO-Key", apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-AIO-Key", apiKey)
 
-// 	// make the request
-// 	client := &http.Client{}
-// 	_, err = client.Do(req)
-// 	if err != nil {
-// 		return
-// 	}
-// }
+	// make the request
+	client := &http.Client{}
+	_, err = client.Do(req)
+	if err != nil {
+		return
+	}
+}

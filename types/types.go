@@ -12,6 +12,7 @@ type UserStore interface {
 type RoomStore interface {
 	CreateRoom(Room) error
 	GetRoomsByUserID(userId int) ([]RoomInfoPayload, error)
+	GetDevicesByRoomId(roomId int) ([]int, error) 
 	UpdateRoom(Room) error
 	DeleteRoom(roomId int, userId int) error
 }
@@ -42,6 +43,7 @@ type LogDeviceStore interface {
 type LogSensorStore interface {
 	CreateLogSensor(LogSensor) error
 	GetLogSensorsByUserID(userId int) ([]LogSensor, error)
+	GetSensorsByFeedIDBetween(feedId int, start time.Time, end time.Time) ([]LogSensor, error)
 	GetLogSensorsLast7HoursByFeedID(feedId int, end time.Time) ([]LogSensor, error)
 }
 
@@ -74,6 +76,11 @@ type PlanStore interface {
 	CreatePlan(Plan) error
 	RemovePlan(int) error
 	GetPlansByFeedID(int) (*Plan, error)
+}
+
+type RequestStatisticDevicePayload struct {
+	Start time.Time `json:"start"`
+	End time.Time `json:"end"`
 }
 
 type Plan struct {

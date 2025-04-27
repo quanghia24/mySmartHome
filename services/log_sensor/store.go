@@ -76,7 +76,33 @@ func (s *Store) GetLogSensorsByUserID(userId int) ([]types.LogSensor, error) {
 	return logs, nil
 }
 
+func (s *Store) GetSensorsByFeedIDBetween(feedId int, start time.Time, end time.Time) ([]types.LogSensor, error) {
+	query := `
+		SELECT id, type, message, sensorId, userId, value, CONVERT_TZ(logs_sensor.createdAt, '+00:00', '+07:00') AS createdAt_utc7 
+		FROM logs_sensor 
+		WHERE sensorId = ? AND type = 'data'  AND createdAt BETWEEN ? AND ?
+		ORDER BY logs_sensor.createdAt DESC
+	`
 
+	rows, err := s.db.Query(query, feedId, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	logs := []types.LogSensor{}
+
+	for rows.Next() {
+		l, err := scanRowIntoLog(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		logs = append(logs, *l)
+	}
+	return logs, nil
+}
 
 func scanRowIntoLog(rows *sql.Rows) (*types.LogSensor, error) {
 	log := new(types.LogSensor)
