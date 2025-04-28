@@ -118,6 +118,12 @@ func (s *Store) UpdateSchedule(payload types.Schedule) error {
 }
 
 
+func (s *Store) RemoveSchedule(id int) error {
+	_, err := s.db.Exec("DELETE FROM schedule WHERE id = ?", id)
+	return err
+}
+
+
 
 func scanRowIntoSchedule(rows *sql.Rows) (*types.Schedule, error) {
 	s := new(types.Schedule)

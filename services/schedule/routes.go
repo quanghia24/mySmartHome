@@ -40,7 +40,18 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/schedules/active", h.getAllActiveSchedule).Methods(http.MethodGet)
 	router.HandleFunc("/schedules/{feed_id}", h.getDeviceScheduleByFeedId).Methods(http.MethodGet)
 	router.HandleFunc("/schedules/{id}", h.updateDeviceSchedule).Methods(http.MethodPatch)
+	router.HandleFunc("/schedules/{id}", h.removeDeviceSchedule).Methods(http.MethodDelete)
 
+}
+
+func (h *Handler) removeDeviceSchedule(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	id, _ := strconv.Atoi(params["id"])
+	if err := h.store.RemoveSchedule(id); err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+	utils.WriteJSON(w, http.StatusOK, fmt.Sprintf("schedule %d has been removed", id))
 }
 
 func (h *Handler) createSchedule(w http.ResponseWriter, r *http.Request) {
@@ -108,7 +119,7 @@ func (h *Handler) getAllActiveSchedule(w http.ResponseWriter, r *http.Request) {
 	schedules, err := h.store.GetAllActiveSchedule()
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)
-		return 
+		return
 	}
 
 	utils.WriteJSON(w, http.StatusOK, schedules)
@@ -153,7 +164,7 @@ func (h *Handler) checkAndRunSchedules() {
 		day := now.Weekday().String()[:3] // "Monday" → "Mon"
 		if nowStr == schedStr && h.containsDay(s.RepeatDays, day) {
 			h.CreateDeviceData(s.DeviceID, s.Action, s.UserID)
-		} 
+		}
 		// else {
 		// 	fmt.Println(nowStr, schedStr, h.containsDay(s.RepeatDays, day))
 		// }

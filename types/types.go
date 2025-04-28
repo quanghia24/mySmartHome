@@ -70,6 +70,7 @@ type ScheduleStore interface {
 	GetScheduleByFeedId(string) ([]Schedule, error)
 	GetScheduleByID(id int) (Schedule, error)
 	UpdateSchedule(Schedule) error
+	RemoveSchedule(id int) error
 }
 
 type PlanStore interface {
