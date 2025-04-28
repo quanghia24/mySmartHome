@@ -12,7 +12,7 @@ type UserStore interface {
 type RoomStore interface {
 	CreateRoom(Room) error
 	GetRoomsByUserID(userId int) ([]RoomInfoPayload, error)
-	GetDevicesByRoomId(roomId int) ([]int, error) 
+	GetDevicesByRoomId(roomId int) ([]int, error)
 	UpdateRoom(Room) error
 	DeleteRoom(roomId int, userId int) error
 }
@@ -78,9 +78,19 @@ type PlanStore interface {
 	GetPlansByFeedID(int) (*Plan, error)
 }
 
+type NotiStore interface {
+	CreateNoti(NotiPayload) error
+	GetNotiByUserId(userId int) (*NotiPayload, error)
+}
+
+type NotiPayload struct {
+	UserID int    `json:"userID"`
+	Ip     string `json:"ip"`
+}
+
 type RequestStatisticDevicePayload struct {
 	Start time.Time `json:"start"`
-	End time.Time `json:"end"`
+	End   time.Time `json:"end"`
 }
 
 type Plan struct {
@@ -205,7 +215,10 @@ type RegisterUserPayload struct {
 	LastName  string `json:"lastName" validate:"required"`
 	Email     string `json:"email" validate:"required,email"`
 	Password  string `json:"password" validate:"required,min=3,max=90"`
+	Ip        string `json:"ip,omitempty"`
 }
+
+
 
 type LoginUserPayload struct {
 	Email    string `json:"email" validate:"required,email"`

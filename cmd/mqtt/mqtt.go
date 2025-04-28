@@ -29,8 +29,8 @@ func NewClient() MQTT.Client {
 	opts := MQTT.NewClientOptions()
 	opts.AddBroker(broker)
 	opts.SetUsername(username)
-	opts.SetPassword("aio_nFqo15Dff0f1V5ZtDJwPLf8S9ZAG")
-	opts.SetClientID("go-client-12345")
+	opts.SetPassword(os.Getenv("AIOKey"))
+	opts.SetClientID(os.Getenv("CLIENTID"))
 
 	opts.AutoReconnect = true
 	opts.OnConnectionLost = func(client MQTT.Client, err error) {
@@ -272,3 +272,4 @@ func controlDevices(device types.DeviceDataPayload) {
 		return
 	}
 }
+

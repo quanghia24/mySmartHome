@@ -15,11 +15,13 @@ import (
 // service
 type Handler struct {
 	store types.UserStore // store repository
+	notiStore types.NotiStore
 }
 
-func NewHandler(store types.UserStore) *Handler {
+func NewHandler(store types.UserStore, notiStore types.NotiStore) *Handler {
 	return &Handler{
 		store: store,
+		notiStore: notiStore,
 	}
 }
 
@@ -126,6 +128,21 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if err != nil { //user exists
 		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
+	}
+
+	user, err := h.store.GetUserByEmail(payload.Email)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+
+	err = h.notiStore.CreateNoti(types.NotiPayload{
+		UserID: user.ID,
+		Ip: payload.Ip,
+	})
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
 	}
 
 	utils.WriteJSON(w, http.StatusCreated, map[string]string{"message": fmt.Sprintf("%s has been registered", payload.Email)})

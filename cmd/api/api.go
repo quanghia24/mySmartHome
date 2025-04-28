@@ -13,6 +13,7 @@ import (
 	"github.com/quanghia24/mySmartHome/services/doorpwd"
 	"github.com/quanghia24/mySmartHome/services/log_device"
 	"github.com/quanghia24/mySmartHome/services/log_sensor"
+	"github.com/quanghia24/mySmartHome/services/notification"
 	"github.com/quanghia24/mySmartHome/services/order"
 	"github.com/quanghia24/mySmartHome/services/plan"
 	"github.com/quanghia24/mySmartHome/services/product"
@@ -51,8 +52,10 @@ func (s *APIServer) Run() error {
 
 	subrouter := router.PathPrefix("/api/v1").Subrouter()
 
+	notiStore := notification.NewStore(s.db)
+
 	userStore := user.NewStore(s.db)
-	userHanlder := user.NewHandler(userStore)
+	userHanlder := user.NewHandler(userStore, notiStore)
 	userHanlder.RegisterRoutes(subrouter)
 
 	productStore := product.NewStore(s.db)
@@ -98,6 +101,9 @@ func (s *APIServer) Run() error {
 
 	statisticHandler := statistic.NewHandler(logDeviceStore, logSensorStore, userStore, roomStore, deviceStore)
 	statisticHandler.RegisterRoutes(subrouter)
+
+	notiHandler := notification.NewHandler(notiStore, userStore)
+	notiHandler.RegisterRoutes(subrouter)
 
 	scheduleHandler.StartSchedule()
 
