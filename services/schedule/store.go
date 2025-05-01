@@ -119,7 +119,7 @@ func (s *Store) UpdateSchedule(payload types.Schedule) error {
 
 
 func (s *Store) RemoveSchedule(id int) error {
-	_, err := s.db.Exec("DELETE FROM schedule WHERE id = ?", id)
+	_, err := s.db.Exec("DELETE FROM schedules WHERE id = ?", id)
 	return err
 }
 

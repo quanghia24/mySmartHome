@@ -272,4 +272,3 @@ func controlDevices(device types.DeviceDataPayload) {
 		return
 	}
 }
-

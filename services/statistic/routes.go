@@ -36,7 +36,84 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/statistic/device/{feed_id}", h.getDeviceStatistic).Methods(http.MethodPost)
 	router.HandleFunc("/statistic/sensor/{feed_id}", h.getSensorStatistic).Methods(http.MethodPost)
 	router.HandleFunc("/statistic/rooms", auth.WithJWTAuth(h.getRoomStatistic, h.userStore)).Methods(http.MethodGet)
-	// router.HandleFunc("/statistic/room/{room_id}", h.getRoomStatistic).Methods(http.MethodPost)
+	router.HandleFunc("/statistic/rooms/{room_id}/{device_type}", h.getRoomDeviceStatistic).Methods(http.MethodPost)
+	router.HandleFunc("/statistic/rooms/{room_id}", h.getStatisticByRoom).Methods(http.MethodPost)
+}
+
+func (h *Handler) getStatisticByRoom(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	room_id, _ := strconv.Atoi(params["room_id"])
+
+	var payload types.RequestStatisticDevicePayload
+
+	fans, err := h.deviceStore.GetDevicesByRoomIdAndType(room_id, "fan")
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+
+	lights, err := h.deviceStore.GetDevicesByRoomIdAndType(room_id, "light")
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+
+
+	// get all light
+
+	if err := utils.ParseJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+		return 
+	}
+
+
+	utils.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"fan": fans,
+		"light": lights,
+	})
+}
+
+func (h *Handler) getRoomDeviceStatistic(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	room_id, _ := strconv.Atoi(params["room_id"])
+	mtype := params["device_type"]
+
+	var payload types.RequestStatisticDevicePayload
+	if err := utils.ParseJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("missing payload"))
+		return
+	}
+
+	var Total float64 = 0
+
+	// getall device in room of type device_type
+	devices, err := h.deviceStore.GetDevicesByRoomIdAndType(room_id, mtype)
+	if err != nil {
+		utils.WriteJSON(w, http.StatusInternalServerError, err)
+		return 
+	}
+
+	startDate := payload.Start.Truncate(24 * time.Hour) // today at 00:00
+	endDate := payload.End.Add(24 * time.Hour)        // tomorrow 00:00
+
+	// return total device type 
+
+	for _, deviceFeedId := range devices {
+		// Get logs of the device today
+		logs, err := h.deviceLog.GetLogsByFeedIDBetween(deviceFeedId, startDate, endDate)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		// Calculate total ON-time in hours
+		totalHours := calculateOnTimeHours(logs, endDate)
+
+		// Apply energy multiplier
+		Total += totalHours 
+	}
+
+	utils.WriteJSON(w, http.StatusOK, map[string]float64{"total": Total})
 }
 
 func (h *Handler) getRoomStatistic(w http.ResponseWriter, r *http.Request) {
@@ -93,6 +170,7 @@ func (h *Handler) getRoomStatistic(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
+
 			// Calculate total ON-time in hours
 			totalHours := calculateOnTimeHours(logs, todayEnd)
 
@@ -137,6 +215,7 @@ func calculateOnTimeHours(logs []types.LogDevice, endOfDay time.Time) float64 {
 	if lastOnTime != nil {
 		totalHours += endOfDay.Sub(*lastOnTime).Hours()
 	}
+
 
 	return totalHours
 }
@@ -235,7 +314,6 @@ func (h *Handler) getDeviceStatistic(w http.ResponseWriter, r *http.Request) {
 			// Device just turned off -> calculate time
 			hoursByDay := splitDurationByDay(*lastOnTime, createdAt)
 			for day, hours := range hoursByDay {
-				fmt.Println("creasing hours")
 				dayHours[day] += hours
 			}
 			lastOnTime = nil

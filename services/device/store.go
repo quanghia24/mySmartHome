@@ -57,6 +57,35 @@ func (s *Store) GetAllDevices() ([]types.AllDeviceDataPayload, error) {
 	return devices, nil
 }
 
+func (s *Store) GetDevicesByRoomIdAndType(roomId int, mtype string) ([]int, error){
+	query := `
+		SELECT feedId 
+		FROM devices
+		WHERE roomId = ? AND type = ?	
+	`
+	rows, err := s.db.Query(query, roomId, mtype)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var feedIds []int
+
+	for rows.Next() {
+		var feedId int
+		if err := rows.Scan(&feedId); err != nil {
+			return nil, err
+		}
+		feedIds = append(feedIds, feedId)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return feedIds, nil
+}
+
 func (s *Store) GetDevicesByUserID(userId int) ([]types.DeviceDataPayload, error) {
 	dquery := `
 		SELECT d.feedId, d.feedKey, l.value, d.type, d.title, l.createdAt
