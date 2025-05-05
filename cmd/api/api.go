@@ -99,7 +99,7 @@ func (s *APIServer) Run() error {
 	scheduleHandler := schedule.NewHandler(scheduleStore, deviceStore, logDeviceStore, doorStore, userStore)
 	scheduleHandler.RegisterRoutes(subrouter)
 
-	statisticHandler := statistic.NewHandler(logDeviceStore, logSensorStore, userStore, roomStore, deviceStore)
+	statisticHandler := statistic.NewHandler(logDeviceStore, logSensorStore, userStore, roomStore, deviceStore, sensorStore)
 	statisticHandler.RegisterRoutes(subrouter)
 
 	notiHandler := notification.NewHandler(notiStore, userStore)

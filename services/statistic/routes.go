@@ -20,15 +20,17 @@ type Handler struct {
 	userStore   types.UserStore
 	roomStore   types.RoomStore
 	deviceStore types.DeviceStore
+	sensorStore types.SensorStore
 }
 
-func NewHandler(deviceLog types.LogDeviceStore, sensorLog types.LogSensorStore, userStore types.UserStore, roomStore types.RoomStore, deviceStore types.DeviceStore) *Handler {
+func NewHandler(deviceLog types.LogDeviceStore, sensorLog types.LogSensorStore, userStore types.UserStore, roomStore types.RoomStore, deviceStore types.DeviceStore, sensorStore types.SensorStore) *Handler {
 	return &Handler{
 		deviceLog:   deviceLog,
 		sensorLog:   sensorLog,
 		userStore:   userStore,
 		roomStore:   roomStore,
 		deviceStore: deviceStore,
+		sensorStore: sensorStore,
 	}
 }
 
@@ -37,6 +39,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/statistic/device/{feed_id}/total", h.getDeviceTotalStatistic).Methods(http.MethodPost)
 
 	router.HandleFunc("/statistic/sensor/{feed_id}", h.getSensorStatistic).Methods(http.MethodPost)
+	router.HandleFunc("/statistic/sensor/room/{room_id}", h.getSensorByRoom).Methods(http.MethodPost)
 
 	router.HandleFunc("/statistic/rooms", auth.WithJWTAuth(h.getRoomAllStatistic, h.userStore)).Methods(http.MethodPost)
 	router.HandleFunc("/statistic/rooms/{room_id}", h.getStatisticByRoom).Methods(http.MethodPost)
@@ -46,6 +49,69 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/statistic/type/{device_type}", auth.WithJWTAuth(h.getDeviceUsageByType, h.userStore)).Methods(http.MethodPost)
 
 	router.HandleFunc("/statistic/graph/{device_type}", auth.WithJWTAuth(h.getGraphicalStatistic, h.userStore)).Methods(http.MethodPost)
+}
+
+func (h *Handler) getSensorByRoom(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	room_id, _ := strconv.Atoi(params["room_id"])
+
+	var payload types.RequestStatisticDevicePayload
+	if err := utils.ParseJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("missing payload"))
+		return
+	}
+
+	sensors, err := h.sensorStore.GetSensorsByRoomId(room_id)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
+	}
+
+	var result = make(map[string]interface{})
+
+	for _, sensor := range sensors {
+		// get all log belong to
+		logs, err := h.sensorLog.GetSensorsByFeedIDBetween(sensor.FeedId, payload.Start, payload.End)
+		if err != nil {
+			utils.WriteError(w, http.StatusInternalServerError, err)
+			return
+		}
+		if len(logs) == 0 {
+			utils.WriteJSON(w, http.StatusOK, map[string]float64{})
+			return
+		}
+
+		// Group by date and calculate average
+		type dateStat struct {
+			total float64
+			count int
+		}
+		dailyStats := make(map[string]*dateStat)
+
+		for _, log := range logs {
+			createdAt := log.CreatedAt.Format("2006-01-02") // Only keep date part
+			value, err := strconv.ParseFloat(log.Value, 64)
+			if err != nil {
+				continue // skip if value cannot be parsed
+			}
+
+			if _, exists := dailyStats[createdAt]; !exists {
+				dailyStats[createdAt] = &dateStat{}
+			}
+			dailyStats[createdAt].total += value
+			dailyStats[createdAt].count++
+		}
+
+		// Build response
+		temp := initDateList(payload.Start, payload.End)
+		for date, stat := range dailyStats {
+			temp[date] = stat.total / float64(stat.count)
+		}
+
+		result[sensor.Type] = temp
+	}
+
+	utils.WriteJSON(w, http.StatusOK, result)
 }
 
 func (h *Handler) getDeviceUsageByType(w http.ResponseWriter, r *http.Request) {

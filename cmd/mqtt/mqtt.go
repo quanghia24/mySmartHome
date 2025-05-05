@@ -282,7 +282,7 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 							} else if mysensor.Type == "temperature" {
 								ntitle += "nhiệt độ"
 							}
-							
+
 							msg := fmt.Sprintf("Đo được %v, vượt ngưỡng trên cho phép là %v", value, upper)
 
 							err := notiStore.CreateNoti(types.NotiPayload{
@@ -360,7 +360,7 @@ func controlDevices(device types.DeviceDataPayload) {
 	}
 }
 
-func sendNotification(ip string, msg string, title string) { 
+func sendNotification(ip string, msg string, title string) {
 	pushToken, err := expo.NewExponentPushToken(ip)
 	if err != nil {
 		panic(err)
@@ -372,9 +372,9 @@ func sendNotification(ip string, msg string, title string) {
 	// Publish message
 	response, err := client.Publish(
 		&expo.PushMessage{
-			To:   []expo.ExponentPushToken{pushToken},
-			Body: msg,
-			Data: map[string]string{"keytest": "datatest"}, 
+			To:       []expo.ExponentPushToken{pushToken},
+			Body:     msg,
+			Data:     map[string]string{"keytest": "datatest"},
 			Sound:    "default",
 			Title:    title,
 			Priority: expo.DefaultPriority,

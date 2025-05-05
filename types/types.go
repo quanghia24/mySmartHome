@@ -32,6 +32,7 @@ type SensorStore interface {
 	CreateSensor(Sensor) error
 	GetSensorByFeedID(feedId int) (*DeviceDataPayload, error)
 	GetAllSensor() ([]Sensor, error)
+	GetSensorsByRoomId(roomId int) ([]Sensor, error)
 }
 
 type LogDeviceStore interface {

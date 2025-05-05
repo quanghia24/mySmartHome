@@ -69,6 +69,25 @@ func (s *Store) GetAllSensor() ([]types.Sensor, error) {
 	return sensors, nil
 }
 
+func (s *Store) GetSensorsByRoomId(roomId int) ([]types.Sensor, error) {
+	rows, err := s.db.Query("SELECT * FROM sensors where roomId = ?", roomId)
+	if err != nil {
+		return nil, err
+	}
+
+	sensors := []types.Sensor{}
+
+	for rows.Next() {
+		s, err := scanIntoSensor(rows)
+		if err != nil {
+			return nil, err
+		}
+
+		sensors = append(sensors, *s)
+	}
+	return sensors, nil
+}
+
 func scanIntoSensor(row *sql.Rows) (*types.Sensor, error) {
 	sensor := new(types.Sensor)
 
