@@ -206,15 +206,17 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 							fmt.Println(err)
 						}
 						if userIp != nil {
-							msg := ""
+							ntitle := "Vượt ngưỡng cảm biến "
 							// send notification
 							if mysensor.Type == "brightness" {
-								msg = "trời tối thui rồi, tớ bật đèn nha :*"
+								ntitle += "ánh sáng"
 							} else if mysensor.Type == "humidity" {
-								msg = "khô quá, bộ nhà này cho lạc đà sống à :v"
+								ntitle += "độ ẩm"
 							} else if mysensor.Type == "temperature" {
-								msg = "lạnh quá người lạ ơi"
+								ntitle += "nhiệt độ"
 							}
+
+							msg := fmt.Sprintf("Đo được %v, thấp hơn ngưỡng dưới cho phép là %v", value, lower)
 
 							err := notiStore.CreateNoti(types.NotiPayload{
 								UserID:  userIp.UserID,
@@ -224,7 +226,7 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 							if err != nil {
 								fmt.Println("error sending out notification")
 							} else {
-								sendNotification(userIp.Ip, msg)
+								sendNotification(userIp.Ip, msg, ntitle)
 							}
 						}
 
@@ -271,15 +273,17 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 							fmt.Println(err)
 						}
 						if userIp != nil {
-							msg := ""
+							ntitle := "Vượt ngưỡng cảm biến "
 							// send notification
 							if mysensor.Type == "brightness" {
-								msg = "Là Đảng hay sao mà chói thế"
+								ntitle += "ánh sáng"
 							} else if mysensor.Type == "humidity" {
-								msg = "Muốn trồng nấm hay gì?"
+								ntitle += "độ ẩm"
 							} else if mysensor.Type == "temperature" {
-								msg = "Con tép khô và cái lò nướng"
+								ntitle += "nhiệt độ"
 							}
+							
+							msg := fmt.Sprintf("Đo được %v, vượt ngưỡng trên cho phép là %v", value, upper)
 
 							err := notiStore.CreateNoti(types.NotiPayload{
 								UserID:  userIp.UserID,
@@ -289,7 +293,7 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 							if err != nil {
 								fmt.Println("error sending out notification")
 							} else {
-								sendNotification(userIp.Ip, msg)
+								sendNotification(userIp.Ip, msg, ntitle)
 							}
 						}
 					}
@@ -356,8 +360,8 @@ func controlDevices(device types.DeviceDataPayload) {
 	}
 }
 
-func sendNotification(ip string, msg string) {
-	pushToken, err := expo.NewExponentPushToken(fmt.Sprintf("ExponentPushToken[%s]", ip))
+func sendNotification(ip string, msg string, title string) { 
+	pushToken, err := expo.NewExponentPushToken(ip)
 	if err != nil {
 		panic(err)
 	}
@@ -370,9 +374,9 @@ func sendNotification(ip string, msg string) {
 		&expo.PushMessage{
 			To:   []expo.ExponentPushToken{pushToken},
 			Body: msg,
-			// Data: map[string]string{"withSome": "data"},
+			Data: map[string]string{"keytest": "datatest"}, 
 			Sound:    "default",
-			Title:    "Warning",
+			Title:    title,
 			Priority: expo.DefaultPriority,
 		},
 	)

@@ -24,6 +24,7 @@ type DeviceStore interface {
 	GetDevicesByFeedID(feedId int) (*DeviceDataPayload, error)
 	GetDevicesInRoomID(id int) ([]DeviceDataPayload, error)
 	GetDevicesByRoomIdAndType(roomId int, mtype string) ([]int, error)
+	GetDevicesByType(userId int, mtype string) ([]int, error)
 	DeleteDevice(deviceId string, userId int) error
 }
 

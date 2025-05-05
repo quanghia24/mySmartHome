@@ -35,12 +35,63 @@ func NewHandler(deviceLog types.LogDeviceStore, sensorLog types.LogSensorStore, 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/statistic/device/{feed_id}", h.getDeviceStatistic).Methods(http.MethodPost)
 	router.HandleFunc("/statistic/device/{feed_id}/total", h.getDeviceTotalStatistic).Methods(http.MethodPost)
+
 	router.HandleFunc("/statistic/sensor/{feed_id}", h.getSensorStatistic).Methods(http.MethodPost)
+
 	router.HandleFunc("/statistic/rooms", auth.WithJWTAuth(h.getRoomAllStatistic, h.userStore)).Methods(http.MethodPost)
 	router.HandleFunc("/statistic/rooms/{room_id}", h.getStatisticByRoom).Methods(http.MethodPost)
 	router.HandleFunc("/statistic/rooms/{room_id}/{device_type}", h.getRoomDeviceStatistic).Methods(http.MethodPost)
 	router.HandleFunc("/statistic/rooms-electric", auth.WithJWTAuth(h.getElectricBills, h.userStore)).Methods(http.MethodGet)
+
+	router.HandleFunc("/statistic/type/{device_type}", auth.WithJWTAuth(h.getDeviceUsageByType, h.userStore)).Methods(http.MethodPost)
+
 	router.HandleFunc("/statistic/graph/{device_type}", auth.WithJWTAuth(h.getGraphicalStatistic, h.userStore)).Methods(http.MethodPost)
+}
+
+func (h *Handler) getDeviceUsageByType(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userId := auth.GetUserIDFromContext(r.Context())
+	mtype := params["device_type"]
+
+	var payload types.RequestStatisticDevicePayload
+	if err := utils.ParseJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("missing payload"))
+		return
+	}
+
+	devices, err := h.deviceStore.GetDevicesByType(userId, mtype)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	startDate := payload.Start.Truncate(24 * time.Hour) // today at 00:00
+	endDate := payload.End.Add(24 * time.Hour)          // tomorrow 00:00
+
+	offvalue := "0"
+	if mtype == "light" {
+		offvalue = "#000000"
+	}
+
+	var Total float64 = 0
+
+
+	for _, deviceFeedId := range devices {
+		// Get logs of the device today
+		logs, err := h.deviceLog.GetLogsByFeedIDBetween(deviceFeedId, startDate, endDate)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		// Calculate total ON-time in hours
+		totalHours := calculateOnTimeHours(logs, endDate, offvalue)
+
+		// Apply energy multiplier
+		Total += totalHours
+	}
+
+	utils.WriteJSON(w, http.StatusOK, map[string]float64{"total": Total})
 }
 
 func (h *Handler) getGraphicalStatistic(w http.ResponseWriter, r *http.Request) {
