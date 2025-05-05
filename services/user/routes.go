@@ -30,6 +30,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/register", h.handleRegister).Methods("POST")
 	router.HandleFunc("/profile", auth.WithJWTAuth(h.handleGetProfile, h.store)).Methods("GET")
 	router.HandleFunc("/profile", auth.WithJWTAuth(h.handleUpdateProfile, h.store)).Methods("PUT")
+
 	router.HandleFunc("/logout", h.handleLogout).Methods("DELETE")
 }
 
@@ -130,20 +131,6 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.store.GetUserByEmail(payload.Email)
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return 
-	}
-
-	err = h.notiStore.CreateNoti(types.NotiPayload{
-		UserID: user.ID,
-		Ip: payload.Ip,
-	})
-	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
-		return 
-	}
 
 	utils.WriteJSON(w, http.StatusCreated, map[string]string{"message": fmt.Sprintf("%s has been registered", payload.Email)})
 }

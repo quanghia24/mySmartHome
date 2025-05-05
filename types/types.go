@@ -81,11 +81,22 @@ type PlanStore interface {
 }
 
 type NotiStore interface {
+	CreateNotiIp(NotiIpPayload) error
+	GetNotiIpByUserId(userId int) (*NotiIpPayload, error)
+
 	CreateNoti(NotiPayload) error
-	GetNotiByUserId(userId int) (*NotiPayload, error)
+	GetNotiByUserId(userId int) ([]NotiPayload, error)
 }
 
 type NotiPayload struct {
+	ID        int       `json:"id"`
+	UserID    int       `json:"userID"`
+	Ip        string    `json:"ip"`
+	Message   string    `json:"message"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type NotiIpPayload struct {
 	UserID int    `json:"userID"`
 	Ip     string `json:"ip"`
 }
@@ -219,8 +230,6 @@ type RegisterUserPayload struct {
 	Password  string `json:"password" validate:"required,min=3,max=90"`
 	Ip        string `json:"ip,omitempty"`
 }
-
-
 
 type LoginUserPayload struct {
 	Email    string `json:"email" validate:"required,email"`

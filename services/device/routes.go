@@ -236,32 +236,6 @@ func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 
 	device.Value = payload.Value
 
-	// msg := ""
-	// switch device.Type {
-	// case "door":
-	// 	if device.Value == "0" {
-	// 		msg = fmt.Sprintf("[%s] got closed", device.Title)
-	// 	} else {
-	// 		msg = fmt.Sprintf("[%s] got opened", device.Title)
-	// 	}
-	// case "fan":
-	// 	msg = fmt.Sprintf("[%s]'s set at level: %s", device.Title, device.Value)
-	// case "light":
-	// 	msg = fmt.Sprintf("[%s]'s set color: %s", device.Title, device.Value)
-	// }
-
-	// err = h.logStore.CreateLog(types.LogDevice{
-	// 	Type:     "onoff",
-	// 	Message:  msg,
-	// 	DeviceID: feedId,
-	// 	UserID:   userId,
-	// 	Value:    device.Value,
-	// })
-	// if err != nil {
-	// 	utils.WriteError(w, http.StatusInternalServerError, fmt.Errorf("log creation:%v", err))
-	// 	return
-	// }
-
 	utils.WriteJSON(w, http.StatusOK, device)
 }
 

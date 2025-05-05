@@ -2,6 +2,7 @@ package mqtt
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,10 +14,18 @@ import (
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/joho/godotenv"
+	"github.com/quanghia24/mySmartHome/services/device"
+	"github.com/quanghia24/mySmartHome/services/log_device"
+	"github.com/quanghia24/mySmartHome/services/log_sensor"
+	"github.com/quanghia24/mySmartHome/services/notification"
+	"github.com/quanghia24/mySmartHome/services/plan"
+	"github.com/quanghia24/mySmartHome/services/sensor"
 	"github.com/quanghia24/mySmartHome/types"
+
+	expo "github.com/oliveroneill/exponent-server-sdk-golang/sdk"
 )
 
-func NewClient() MQTT.Client {
+func NewClient(db *sql.DB) MQTT.Client {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("error loading .env file in mqtt")
@@ -33,6 +42,24 @@ func NewClient() MQTT.Client {
 	opts.SetClientID(os.Getenv("CLIENTID"))
 
 	opts.AutoReconnect = true
+
+	opts.OnConnect = func(client MQTT.Client) {
+		fmt.Println("------- Trying to reconnecting to Adafruit IO -------")
+		fmt.Println("connecting...")
+		time.Sleep(2 * time.Second)
+
+		deviceStore := device.NewStore(db)
+		deviceLogStore := log_device.NewStore(db)
+
+		sensorStore := sensor.NewStore(db)
+		sensorLogStore := log_sensor.NewStore(db)
+		planStore := plan.NewStore(db)
+		notiStore := notification.NewStore(db)
+
+		ResubscribeDevices(deviceStore, client, deviceLogStore)
+		ResubscribeSensors(sensorStore, deviceStore, client, planStore, sensorLogStore, notiStore)
+	}
+
 	opts.OnConnectionLost = func(client MQTT.Client, err error) {
 		fmt.Println("Connection lost:", err)
 	}
@@ -66,7 +93,7 @@ func ResubscribeDevices(store types.DeviceStore, mqttClient MQTT.Client, logStor
 
 	for _, d := range devices {
 		topic := fmt.Sprintf("%s/feeds/%s", username, d.FeedKey)
-		fmt.Println("Subscribing to:", topic)
+		// fmt.Println("Subscribing to:", topic)
 
 		token := mqttClient.Subscribe(topic, 0, func(client MQTT.Client, msg MQTT.Message) {
 			fmt.Printf("Received message on %s: %s\n", msg.Topic(), msg.Payload())
@@ -107,7 +134,7 @@ func ResubscribeDevices(store types.DeviceStore, mqttClient MQTT.Client, logStor
 	return nil
 }
 
-func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, mqttClient MQTT.Client, planStore types.PlanStore, logStore types.LogSensorStore) error {
+func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, mqttClient MQTT.Client, planStore types.PlanStore, logStore types.LogSensorStore, notiStore types.NotiStore) error {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("error loading .env file in mqtt")
@@ -121,7 +148,7 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 
 	for _, d := range sensors {
 		topic := fmt.Sprintf("%s/feeds/%s", username, d.FeedKey)
-		fmt.Println("Subscribing to:", topic)
+		// fmt.Println("Subscribing to:", topic)
 
 		token := mqttClient.Subscribe(topic, 0, func(client MQTT.Client, msg MQTT.Message) {
 			fmt.Printf("Received message on %s: %s\n", msg.Topic(), msg.Payload())
@@ -160,7 +187,6 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 							log.Println("error get sensor by id:", err)
 						}
 
-						fmt.Println(mysensor)
 						if mysensor.Type == "brightness" {
 							devices, err := deviceStore.GetDevicesInRoomID(d.RoomID)
 							if err != nil {
@@ -173,6 +199,35 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 								}
 							}
 						}
+
+						// send out notification
+						userIp, err := notiStore.GetNotiIpByUserId(d.UserID)
+						if err != nil {
+							fmt.Println(err)
+						}
+						if userIp != nil {
+							msg := ""
+							// send notification
+							if mysensor.Type == "brightness" {
+								msg = "trời tối thui rồi, tớ bật đèn nha :*"
+							} else if mysensor.Type == "humidity" {
+								msg = "khô quá, bộ nhà này cho lạc đà sống à :v"
+							} else if mysensor.Type == "temperature" {
+								msg = "lạnh quá người lạ ơi"
+							}
+
+							err := notiStore.CreateNoti(types.NotiPayload{
+								UserID:  userIp.UserID,
+								Ip:      userIp.Ip,
+								Message: msg,
+							})
+							if err != nil {
+								fmt.Println("error sending out notification")
+							} else {
+								sendNotification(userIp.Ip, msg)
+							}
+						}
+
 					}
 				}
 				if plan.Upper != "" {
@@ -207,6 +262,34 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 								if device.Type == "fan" && device.Value == "0" {
 									controlDevices(device)
 								}
+							}
+						}
+
+						// send out notification
+						userIp, err := notiStore.GetNotiIpByUserId(d.UserID)
+						if err != nil {
+							fmt.Println(err)
+						}
+						if userIp != nil {
+							msg := ""
+							// send notification
+							if mysensor.Type == "brightness" {
+								msg = "Là Đảng hay sao mà chói thế"
+							} else if mysensor.Type == "humidity" {
+								msg = "Muốn trồng nấm hay gì?"
+							} else if mysensor.Type == "temperature" {
+								msg = "Con tép khô và cái lò nướng"
+							}
+
+							err := notiStore.CreateNoti(types.NotiPayload{
+								UserID:  userIp.UserID,
+								Ip:      userIp.Ip,
+								Message: msg,
+							})
+							if err != nil {
+								fmt.Println("error sending out notification")
+							} else {
+								sendNotification(userIp.Ip, msg)
 							}
 						}
 					}
@@ -270,5 +353,37 @@ func controlDevices(device types.DeviceDataPayload) {
 	_, err = client.Do(req)
 	if err != nil {
 		return
+	}
+}
+
+func sendNotification(ip string, msg string) {
+	pushToken, err := expo.NewExponentPushToken(fmt.Sprintf("ExponentPushToken[%s]", ip))
+	if err != nil {
+		panic(err)
+	}
+
+	// Create a new Expo SDK client
+	client := expo.NewPushClient(nil)
+
+	// Publish message
+	response, err := client.Publish(
+		&expo.PushMessage{
+			To:   []expo.ExponentPushToken{pushToken},
+			Body: msg,
+			// Data: map[string]string{"withSome": "data"},
+			Sound:    "default",
+			Title:    "Warning",
+			Priority: expo.DefaultPriority,
+		},
+	)
+
+	// Check errors
+	if err != nil {
+		panic(err)
+	}
+
+	// Validate responses
+	if response.ValidateResponse() != nil {
+		fmt.Println(response.PushMessage.To, "failed")
 	}
 }

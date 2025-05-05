@@ -81,8 +81,20 @@ func (h *Handler) createSensor(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		utils.WriteError(w, http.StatusBadRequest, err)
+		utils.WriteError(w, http.StatusInternalServerError, err)
 		return
+	}
+
+	err = h.logSensorStore.CreateLogSensor(types.LogSensor{
+		Type:     "creation",
+		Message:  fmt.Sprintf("[%s] got added", payload.Title),
+		SensorID: payload.FeedID,
+		UserID:   userId,
+		Value: "0",
+	})
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return 
 	}
 	
 
