@@ -129,16 +129,10 @@ func (h *Handler) getAllActiveSchedule(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) StartSchedule() {
 	c := cron.New(cron.WithSeconds())
 	c.AddFunc("0 * * * * *", func() {
-		// fmt.Println("run every 1 min")
 		h.checkAndRunSchedules()
 	})
-	// c.AddFunc("0 */30 * * * *", func() {
-	// 	fmt.Println("run every 30 min")
-
-	// })
 
 	c.Start()
-	// c.Stop() // Stop the scheduler (does not stop any jobs already running).
 }
 
 func (h *Handler) checkAndRunSchedules() {
@@ -149,8 +143,8 @@ func (h *Handler) checkAndRunSchedules() {
 		return
 	}
 
+
 	for _, s := range schedules {
-		// fmt.Println(s)
 		loc, err := time.LoadLocation(s.Timezone)
 		if err != nil {
 			fmt.Println("Invalid timezone:", s.Timezone)
@@ -162,12 +156,14 @@ func (h *Handler) checkAndRunSchedules() {
 		schedStr := s.ScheduledTime[:5] // e.g., "07:30:00" → "07:30"
 
 		day := now.Weekday().String()[:3] // "Monday" → "Mon"
+
 		if nowStr == schedStr && h.containsDay(s.RepeatDays, day) {
+			fmt.Println("CREATEEEEEEEEEEEEE LOGGGGGGGGG")
 			h.CreateDeviceData(s.DeviceID, s.Action, s.UserID)
+		} else {
+			fmt.Println("Same day:", h.containsDay(s.RepeatDays, day))
+			fmt.Println(nowStr, schedStr)
 		}
-		// else {
-		// 	fmt.Println(nowStr, schedStr, h.containsDay(s.RepeatDays, day))
-		// }
 	}
 }
 
@@ -197,6 +193,10 @@ func (h *Handler) contains(haystack, needle string) bool {
 			haystack[1:4] == needle))
 }
 
+// !!!!!!!!!!
+
+
+
 func (h *Handler) CreateDeviceData(feedId int, value string, userId int) error {
 	device, err := h.deviceStore.GetDevicesByFeedID(feedId)
 	if err != nil {
@@ -217,14 +217,6 @@ func (h *Handler) CreateDeviceData(feedId int, value string, userId int) error {
 			value = "100"
 		default:
 			value = "0"
-		}
-	} else if device.Type == "door" {
-		err := h.doorStore.CreatePassword(types.DoorPassword{
-			FeedID: feedId,
-			PWD:    "",
-		})
-		if err != nil {
-			return err
 		}
 	}
 
@@ -255,30 +247,7 @@ func (h *Handler) CreateDeviceData(feedId int, value string, userId int) error {
 	if _, err := client.Do(req); err != nil {
 		return err
 	}
-
-	// Update device value
-	device.Value = value
-
-	// Create log
-	var msg string
-	switch device.Type {
-	case "door":
-		if value == "0" {
-			msg = fmt.Sprintf("[%s] got closed", device.Title)
-		} else {
-			msg = fmt.Sprintf("[%s] got opened", device.Title)
-		}
-	case "fan":
-		msg = fmt.Sprintf("[%s]'s set at level: %s", device.Title, value)
-	case "light":
-		msg = fmt.Sprintf("[%s]'s set color: %s", device.Title, value)
-	}
-
-	return h.logStore.CreateLog(types.LogDevice{
-		Type:     "onoff",
-		Message:  msg,
-		DeviceID: feedId,
-		UserID:   userId,
-		Value:    value,
-	})
+	
+	return nil
 }
+ 

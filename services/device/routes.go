@@ -163,7 +163,6 @@ func (h *Handler) addDeviceData(w http.ResponseWriter, r *http.Request) {
 	url := os.Getenv("AIOAPI") + device.FeedKey + "/data"
 	log.Println("adding data to", url)
 
-	// userId := auth.GetUserIDFromContext(r.Context())
 
 	var payload types.DeviceDataPayload
 	if err := utils.ParseJSON(r, &payload); err != nil {

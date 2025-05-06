@@ -149,8 +149,10 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 	for _, d := range sensors {
 		topic := fmt.Sprintf("%s/feeds/%s", username, d.FeedKey)
 		// fmt.Println("Subscribing to:", topic)
-
+		
 		token := mqttClient.Subscribe(topic, 0, func(client MQTT.Client, msg MQTT.Message) {
+			fmt.Println(sensors)
+			
 			fmt.Printf("Received message on %s: %s\n", msg.Topic(), msg.Payload())
 
 			f, _ := strconv.ParseFloat(string(msg.Payload()), 32)
