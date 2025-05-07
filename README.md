@@ -1,7 +1,12 @@
 # Smart Home Automation System
 ## Overview
-
-This smart home automation project allows users to control devices, automate operations through sensors, manage access, and monitor device status through a user-friendly application interface.
+This mySmartHome allows users to:
+- Control multiple devices
+- Create scheduling operations
+- Log system
+- Automatically take on control when sensors detect a value above the threshold
+- Monitor devices' status with a user-friendly interface
+- Statistical system
 ## Features
 1. Device Management
 - Control smart devices such as fans, lights, LCD screens, and servos.
@@ -23,16 +28,22 @@ This smart home automation project allows users to control devices, automate ope
   - Statistics and reports on device usage
   - Real-time notifications on device activity and system warnings
 
+5. Notification system
+- Users receive messages when a certain sensor detects a value above a threshold
 
-5. Account Management
-- Users can log in and log out securely from their accounts.
+
+## System design
+![architecture](https://github.com/user-attachments/assets/2a8edd9a-8525-476e-a811-56d9cf41113d)
+## Database design
+![erd](https://github.com/user-attachments/assets/f1684c37-6e0b-4fa2-b829-b16d3bb4391b)
 
 ## System Architecture
-- Backend: Manages device control, scheduling, sensor data processing, user authentication, and access control.
+- Backend: Manages device control, scheduling, realtime data processing, notification system.
 - Frontend: Displays device status, statistics, control options, and alerts.
 - Embedded Devices: Handle sensor readings and device actuation based on control signals from the backend.
 
 ## Technologies Used
 - Backend: Go
 - Frontend: ReactNative
-- Communication: MQTT / HTTP APIs
+- Database: MySQL
+- Communication: MQTT / HTTP APIs.
