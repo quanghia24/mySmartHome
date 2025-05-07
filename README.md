@@ -1,4 +1,5 @@
 # Smart Home Automation System
+![architecture](https://github.com/user-attachments/assets/2a8edd9a-8525-476e-a811-56d9cf41113d)
 ## Overview
 This mySmartHome allows users to:
 - Control multiple devices
@@ -31,9 +32,6 @@ This mySmartHome allows users to:
 5. Notification system
 - Users receive messages when a certain sensor detects a value above a threshold
 
-
-## System design
-![architecture](https://github.com/user-attachments/assets/2a8edd9a-8525-476e-a811-56d9cf41113d)
 ## Database design
 ![erd](https://github.com/user-attachments/assets/f1684c37-6e0b-4fa2-b829-b16d3bb4391b)
 
