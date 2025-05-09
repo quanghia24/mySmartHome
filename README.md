@@ -1,4 +1,7 @@
 # Smart Home Automation System
+
+[API description](https://docs.google.com/spreadsheets/d/1hKp6uWtLArFMC-gRtd1FfuL8FaNSx7NGMSPPlsnq1AA/edit?usp=sharing)
+
 ![architecture](https://github.com/user-attachments/assets/2a8edd9a-8525-476e-a811-56d9cf41113d)
 ## Overview
 This mySmartHome allows users to:
