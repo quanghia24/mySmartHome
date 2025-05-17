@@ -411,13 +411,14 @@ func (h *Handler) getRoomAllStatistic(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// If still "on" at the end of log, close the period
-			if lastOnTime != nil {
-				endTime := payload.End
-				hoursByDay := splitDurationByDay(*lastOnTime, endTime)
-				for day, hours := range hoursByDay {
-					fanHours[day] += hours
-				}
-			}
+			// if lastOnTime != nil {
+			// 	fmt.Println(lastOnTime)
+			// 	endTime := payload.End
+			// 	hoursByDay := splitDurationByDay(*lastOnTime, endTime)
+			// 	for day, hours := range hoursByDay {
+			// 		fanHours[day] += hours
+			// 	}
+			// }
 		}
 
 		for _, lightId := range lights {
@@ -452,13 +453,14 @@ func (h *Handler) getRoomAllStatistic(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// If still "on" at the end of log, close the period
-			if lastOnTime != nil {
-				endTime := payload.End
-				hoursByDay := splitDurationByDay(*lastOnTime, endTime)
-				for day, hours := range hoursByDay {
-					lightHours[day] += hours
-				}
-			}
+			// if lastOnTime != nil {
+			// 	fmt.Println(lastOnTime)
+			// 	endTime := payload.End
+			// 	hoursByDay := splitDurationByDay(*lastOnTime, endTime)
+			// 	for day, hours := range hoursByDay {
+			// 		lightHours[day] += hours
+			// 	}
+			// }
 		}
 
 	}
