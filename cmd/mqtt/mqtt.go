@@ -13,7 +13,6 @@ import (
 	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
-	"github.com/joho/godotenv"
 	"github.com/quanghia24/mySmartHome/services/device"
 	"github.com/quanghia24/mySmartHome/services/log_device"
 	"github.com/quanghia24/mySmartHome/services/log_sensor"
@@ -26,10 +25,10 @@ import (
 )
 
 func NewClient(db *sql.DB) MQTT.Client {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("error loading .env file in mqtt")
-	}
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	log.Fatal("error loading .env file in mqtt")
+	// }
 	username := os.Getenv("AIOUSER")
 	// MQTT broker URL for Adafruit IO
 	broker := os.Getenv("BROKER")
@@ -80,10 +79,10 @@ func NewClient(db *sql.DB) MQTT.Client {
 }
 
 func ResubscribeDevices(store types.DeviceStore, mqttClient MQTT.Client, logStore types.LogDeviceStore) error {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("error loading .env file in mqtt")
-	}
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	log.Fatal("error loading .env file in mqtt")
+	// }
 	username := os.Getenv("AIOUSER")
 
 	devices, err := store.GetAllDevices()
@@ -135,10 +134,10 @@ func ResubscribeDevices(store types.DeviceStore, mqttClient MQTT.Client, logStor
 }
 
 func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, mqttClient MQTT.Client, planStore types.PlanStore, logStore types.LogSensorStore, notiStore types.NotiStore) error {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("error loading .env file in mqtt")
-	}
+	// err := godotenv.Load()
+	// if err != nil {
+	// 	log.Fatal("error loading .env file in mqtt")
+	// }
 	username := os.Getenv("AIOUSER")
 
 	sensors, err := store.GetAllSensor()
@@ -149,10 +148,10 @@ func ResubscribeSensors(store types.SensorStore, deviceStore types.DeviceStore, 
 	for _, d := range sensors {
 		topic := fmt.Sprintf("%s/feeds/%s", username, d.FeedKey)
 		// fmt.Println("Subscribing to:", topic)
-		
+
 		token := mqttClient.Subscribe(topic, 0, func(client MQTT.Client, msg MQTT.Message) {
 			fmt.Println(sensors)
-			
+
 			fmt.Printf("Received message on %s: %s\n", msg.Topic(), msg.Payload())
 
 			f, _ := strconv.ParseFloat(string(msg.Payload()), 32)

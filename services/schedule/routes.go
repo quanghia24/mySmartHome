@@ -158,12 +158,12 @@ func (h *Handler) checkAndRunSchedules() {
 		day := now.Weekday().String()[:3] // "Monday" → "Mon"
 
 		if nowStr == schedStr && h.containsDay(s.RepeatDays, day) {
-			fmt.Println("CREATEEEEEEEEEEEEE LOGGGGGGGGG")
 			h.CreateDeviceData(s.DeviceID, s.Action, s.UserID)
-		} else {
-			fmt.Println("Same day:", h.containsDay(s.RepeatDays, day))
-			fmt.Println(nowStr, schedStr)
-		}
+		} 
+		// else {
+		// 	fmt.Println("Same day:", h.containsDay(s.RepeatDays, day))
+		// 	fmt.Println(nowStr, schedStr)
+		// }
 	}
 }
 
